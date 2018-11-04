@@ -211,17 +211,12 @@ namespace MQTTnet.Server
             
             try
             {
-                var firstPacket = await clientAdapter.ReceivePacketAsync(_options.DefaultCommunicationTimeout, cancellationToken).ConfigureAwait(false);
-                if (firstPacket == null)
+                var connectPacket = await ReceiveConnectPacket(clientAdapter, cancellationToken);
+                if (connectPacket == null)
                 {
                     return;
                 }
-
-                if (!(firstPacket is MqttConnectPacket connectPacket))
-                {
-                    throw new MqttProtocolViolationException("The first packet from a client must be a 'CONNECT' packet [MQTT-3.1.0-1].");
-                }
-
+                
                 clientId = connectPacket.ClientId;
 
                 // Switch to the required protocol version before sending any response.
@@ -267,6 +262,48 @@ namespace MQTTnet.Server
                 if (!_options.EnablePersistentSessions)
                 {
                     DeleteSession(clientId);
+                }
+            }
+        }
+
+        private async Task<MqttConnectPacket> ReceiveConnectPacket(IMqttChannelAdapter clientAdapter, CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<MqttConnectPacket>();
+
+            using (var timeout = new CancellationTokenSource(_options.DefaultCommunicationTimeout))
+            using (var combined = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken))
+            using (combined.Token.Register(() => tcs.TrySetResult(null)))
+            {
+                void HandleConnectPacket(object sender, MqttBasePacket firstPacket)
+                {
+                    try
+                    {
+                        if (firstPacket is MqttConnectPacket connectPacket)
+                        {
+                            tcs.TrySetResult(connectPacket);
+                            return;
+                        }
+
+                        tcs.TrySetException(new MqttProtocolViolationException("The first packet from a client must be a 'CONNECT' packet [MQTT-3.1.0-1]."));
+                    }
+                    finally
+                    {
+                        combined.Cancel();
+                    }
+                }
+                               
+                try
+                {
+                    clientAdapter.ReadingPacketCompleted += HandleConnectPacket;
+
+                    await clientAdapter.ReceivePacketAsync(combined.Token).ConfigureAwait(false);
+                    var result = await tcs.Task;
+
+                    return result;
+                }
+                finally
+                {
+                    clientAdapter.ReadingPacketCompleted -= HandleConnectPacket;
                 }
             }
         }

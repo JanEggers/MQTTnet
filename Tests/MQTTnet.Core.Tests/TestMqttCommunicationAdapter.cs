@@ -19,7 +19,7 @@ namespace MQTTnet.Core.Tests
         public IMqttPacketSerializer PacketSerializer { get; } = new MqttPacketSerializer();
 
         public event EventHandler ReadingPacketStarted;
-        public event EventHandler ReadingPacketCompleted;
+        public event EventHandler<MqttBasePacket> ReadingPacketCompleted;
 
         public void Dispose()
         {
@@ -44,40 +44,23 @@ namespace MQTTnet.Core.Tests
             return Task.FromResult(0);
         }
 
-        public async Task<MqttBasePacket> ReceivePacketAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        public Task ReceivePacketAsync(CancellationToken cancellationToken)
         {
             ThrowIfPartnerIsNull();
 
-            if (timeout > TimeSpan.Zero)
+            return Task.Run(() =>
             {
-                using (var timeoutCts = new CancellationTokenSource(timeout))
-                using (var cts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken))
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    return await Task.Run(() =>
-                    {
-                        try
-                        {
-                            return _incomingPackets.Take(cts.Token);
-                        }
-                        catch
-                        {
-                            return null;
-                        }
-                    }, cts.Token);
+                    var packet = _incomingPackets.Take(cancellationToken);
+                    ReadingPacketCompleted?.Invoke(this, packet);
                 }
-            }
+            });
+        }
 
-            return await Task.Run(() =>
-            {
-                try
-                {
-                    return _incomingPackets.Take(cancellationToken);
-                }
-                catch
-                {
-                    return null;
-                }
-            }, cancellationToken);
+        public MqttBasePacket Take()
+        {
+            return _incomingPackets.Take();
         }
 
         private void EnqueuePacketInternal(MqttBasePacket packet)

@@ -14,7 +14,7 @@ namespace MQTTnet.Adapter
 
         event EventHandler ReadingPacketStarted;
 
-        event EventHandler ReadingPacketCompleted;
+        event EventHandler<MqttBasePacket> ReadingPacketCompleted;
 
         Task ConnectAsync(TimeSpan timeout, CancellationToken cancellationToken);
 
@@ -22,6 +22,6 @@ namespace MQTTnet.Adapter
 
         Task SendPacketAsync(MqttBasePacket packet, CancellationToken cancellationToken);
 
-        Task<MqttBasePacket> ReceivePacketAsync(TimeSpan timeout, CancellationToken cancellationToken);
+        Task ReceivePacketAsync(CancellationToken cancellationToken);
     }
 }

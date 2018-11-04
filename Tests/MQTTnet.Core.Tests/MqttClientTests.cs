@@ -49,7 +49,7 @@ namespace MQTTnet.Core.Tests
             channel2.Partner = channel;
 
             Task.Run(async () => {
-                var connect = await channel2.ReceivePacketAsync(TimeSpan.Zero, CancellationToken.None);
+                var connect = channel2.Take();
                 await channel2.SendPacketAsync(new MqttConnAckPacket() { ConnectReturnCode = Protocol.MqttConnectReturnCode.ConnectionRefusedNotAuthorized }, CancellationToken.None);
             });
 

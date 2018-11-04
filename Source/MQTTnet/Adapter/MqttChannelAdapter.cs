@@ -44,7 +44,7 @@ namespace MQTTnet.Adapter
         public IMqttPacketSerializer PacketSerializer { get; }
 
         public event EventHandler ReadingPacketStarted;
-        public event EventHandler ReadingPacketCompleted;
+        public event EventHandler<MqttBasePacket> ReadingPacketCompleted;
 
         public async Task ConnectAsync(TimeSpan timeout, CancellationToken cancellationToken)
         {
@@ -118,103 +118,91 @@ namespace MQTTnet.Adapter
             }
         }
 
-        public async Task<MqttBasePacket> ReceivePacketAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        public async Task ReceivePacketAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                ReceivedMqttPacket receivedMqttPacket;
-
-                if (timeout > TimeSpan.Zero)
+                try
                 {
-                    receivedMqttPacket = await Internal.TaskExtensions.TimeoutAfterAsync(ReceiveAsync, timeout, cancellationToken).ConfigureAwait(false);
+                    ReceivedMqttPacket receivedMqttPacket = await ReceiveAsync(cancellationToken).ConfigureAwait(false);
+                    if (receivedMqttPacket == null || cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    var packet = PacketSerializer.Deserialize(receivedMqttPacket);
+                    if (packet == null)
+                    {
+                        throw new MqttProtocolViolationException("Received malformed packet.");
+                    }
+
+                    _logger.Verbose("RX <<< {0}", packet);
+                    ReadingPacketCompleted?.Invoke(this, packet);
                 }
-                else
+                catch (OperationCanceledException)
                 {
-                    receivedMqttPacket = await ReceiveAsync(cancellationToken).ConfigureAwait(false);
+                    break;
                 }
-
-                if (receivedMqttPacket == null || cancellationToken.IsCancellationRequested)
+                catch (Exception exception)
                 {
-                    return null;
+                    ReadingPacketCompleted?.Invoke(this, null);
+                    if (IsWrappedException(exception))
+                    {
+                        throw;
+                    }
+
+                    WrapException(exception);
                 }
-
-                var packet = PacketSerializer.Deserialize(receivedMqttPacket);
-                if (packet == null)
-                {
-                    throw new MqttProtocolViolationException("Received malformed packet.");
-                }
-
-                _logger.Verbose("RX <<< {0}", packet);
-
-                return packet;
             }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception exception)
-            {
-                if (IsWrappedException(exception))
-                {
-                    throw;
-                }
-
-                WrapException(exception);
-            }
-
-            return null;
         }
 
         private async Task<ReceivedMqttPacket> ReceiveAsync(CancellationToken cancellationToken)
         {
             var fixedHeader = await MqttPacketReader.ReadFixedHeaderAsync(_channel, _fixedHeaderBuffer, _singleByteBuffer, cancellationToken).ConfigureAwait(false);
 
-            try
+            ReadingPacketStarted?.Invoke(this, EventArgs.Empty);
+
+            if (fixedHeader.RemainingLength == 0)
             {
-                ReadingPacketStarted?.Invoke(this, EventArgs.Empty);
+                return new ReceivedMqttPacket(fixedHeader.Flags, null);
+            }
 
-                if (fixedHeader.RemainingLength == 0)
+            var body = new byte[fixedHeader.RemainingLength];
+            var bodyOffset = 0;
+            var chunkSize = Math.Min(ReadBufferSize, fixedHeader.RemainingLength);
+
+            do
+            {
+                var bytesLeft = body.Length - bodyOffset;
+                if (chunkSize > bytesLeft)
                 {
-                    return new ReceivedMqttPacket(fixedHeader.Flags, null);
+                    chunkSize = bytesLeft;
                 }
-
-                var body = new byte[fixedHeader.RemainingLength];
-                var bodyOffset = 0;
-                var chunkSize = Math.Min(ReadBufferSize, fixedHeader.RemainingLength);
-
-                do
-                {
-                    var bytesLeft = body.Length - bodyOffset;
-                    if (chunkSize > bytesLeft)
-                    {
-                        chunkSize = bytesLeft;
-                    }
 
 #if WINDOWS_UWP
                     var readBytes = await _channel.ReadAsync(body, bodyOffset, chunkSize, cancellationToken).ConfigureAwait(false);
 #else
-                    // async/await is not used to avoid the overhead of context switches. We assume that the reamining data
-                    // has been sent from the sender directly after the initial bytes.
-                    var readBytes = _channel.ReadAsync(body, bodyOffset, chunkSize, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
+                // async/await is not used to avoid the overhead of context switches. We assume that the reamining data
+                // has been sent from the sender directly after the initial bytes.
+                var readBytes = _channel.ReadAsync(body, bodyOffset, chunkSize, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
 #endif
 
-                    cancellationToken.ThrowIfCancellationRequested();
-                    ExceptionHelper.ThrowIfGracefulSocketClose(readBytes);
+                cancellationToken.ThrowIfCancellationRequested();
+                ExceptionHelper.ThrowIfGracefulSocketClose(readBytes);
 
-                    bodyOffset += readBytes;
-                } while (bodyOffset < body.Length);
+                bodyOffset += readBytes;
+            } while (bodyOffset < body.Length);
 
-                return new ReceivedMqttPacket(fixedHeader.Flags, new MqttPacketBodyReader(body, 0, body.Length));
-            }
-            finally
-            {
-                ReadingPacketCompleted?.Invoke(this, EventArgs.Empty);
-            }
+            return new ReceivedMqttPacket(fixedHeader.Flags, new MqttPacketBodyReader(body, 0, body.Length));
         }
 
         public void Dispose()
         {
+            ReadingPacketStarted = null;
+            ReadingPacketCompleted = null;
+
             _isDisposed = true;
 
             _channel?.Dispose();

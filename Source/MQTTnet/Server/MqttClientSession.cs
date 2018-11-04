@@ -99,15 +99,7 @@ namespace MQTTnet.Server
                 _pendingPacketsQueue.Start(adapter, _cancellationTokenSource.Token);
                 _keepAliveMonitor.Start(connectPacket.KeepAlivePeriod, _cancellationTokenSource.Token);
 
-                while (!_cancellationTokenSource.IsCancellationRequested)
-                {
-                    var packet = await adapter.ReceivePacketAsync(TimeSpan.Zero, _cancellationTokenSource.Token).ConfigureAwait(false);
-                    if (packet != null)
-                    {
-                        _keepAliveMonitor.PacketReceived(packet);
-                        ProcessReceivedPacket(adapter, packet, _cancellationTokenSource.Token);
-                    }
-                }
+                await adapter.ReceivePacketAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -299,6 +291,8 @@ namespace MQTTnet.Server
 
         private void ProcessReceivedPacket(IMqttChannelAdapter adapter, MqttBasePacket packet, CancellationToken cancellationToken)
         {
+            _keepAliveMonitor.PacketReceived(packet);
+
             if (packet is MqttPublishPacket publishPacket)
             {
                 HandleIncomingPublishPacket(adapter, publishPacket, cancellationToken);
@@ -457,9 +451,10 @@ namespace MQTTnet.Server
             adapter.SendPacketAsync(response, cancellationToken).GetAwaiter().GetResult();
         }
 
-        private void OnAdapterReadingPacketCompleted(object sender, EventArgs e)
+        private void OnAdapterReadingPacketCompleted(object sender, MqttBasePacket e)
         {
             _keepAliveMonitor?.Resume();
+            ProcessReceivedPacket((IMqttChannelAdapter)sender, e, _cancellationTokenSource.Token);
         }
 
         private void OnAdapterReadingPacketStarted(object sender, EventArgs e)

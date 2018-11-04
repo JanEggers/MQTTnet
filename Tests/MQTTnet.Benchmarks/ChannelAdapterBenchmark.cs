@@ -7,6 +7,7 @@ using MQTTnet.Serializer;
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MQTTnet.Benchmarks
 {
@@ -50,10 +51,21 @@ namespace MQTTnet.Benchmarks
         {
             _stream.Position = 0;
 
-            for (var i = 0; i < 10000; i++)
+            using (var cts = new CancellationTokenSource())
             {
-                _channelAdapter.ReceivePacketAsync(TimeSpan.Zero, CancellationToken.None).GetAwaiter().GetResult();
-            }
+                var i = 0;
+                _channelAdapter.ReadingPacketCompleted += (sender, p) =>
+                {
+                    i++;
+
+                    if (i >= 10000)
+                    {
+                        cts.Cancel();
+                    }
+                };
+
+                _channelAdapter.ReceivePacketAsync(cts.Token).GetAwaiter().GetResult();
+            }           
 
             _stream.Position = 0;
         }

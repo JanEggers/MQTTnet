@@ -61,6 +61,7 @@ namespace MQTTnet.Client
                 _cancellationTokenSource = new CancellationTokenSource();
                 _disconnectGate = 0;
                 _adapter = _adapterFactory.CreateClientAdapter(options, _logger);
+                _adapter.ReadingPacketCompleted += (sender, packet) => ProcessReceivedPacket(packet, _cancellationTokenSource.Token);
 
                 _logger.Verbose($"Trying to connect with server ({_options.ChannelOptions}).");
                 await _adapter.ConnectAsync(_options.CommunicationTimeout, _cancellationTokenSource.Token).ConfigureAwait(false);
@@ -378,16 +379,8 @@ namespace MQTTnet.Client
 
             try
             {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    var packet = await _adapter.ReceivePacketAsync(TimeSpan.Zero, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (packet != null && !cancellationToken.IsCancellationRequested)
-                    {
-                        await ProcessReceivedPacketAsync(packet, cancellationToken).ConfigureAwait(false);
-                    }
-                }
+                await _adapter.ReceivePacketAsync(cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -421,64 +414,57 @@ namespace MQTTnet.Client
             }
         }
 
-        private Task ProcessReceivedPacketAsync(MqttBasePacket packet, CancellationToken cancellationToken)
+        private void ProcessReceivedPacket(MqttBasePacket packet, CancellationToken cancellationToken)
         {
-            if (packet is MqttPublishPacket publishPacket)
+            switch (packet)
             {
-                return ProcessReceivedPublishPacketAsync(publishPacket, cancellationToken);
+                case MqttPublishPacket publishPacket:
+                    ProcessReceivedPublishPacket(publishPacket, cancellationToken);
+                    break;
+                case MqttPingReqPacket _:
+                    SendAsync(new MqttPingRespPacket(), cancellationToken);
+                    break;
+                case MqttDisconnectPacket _:
+                    DisconnectAsync();
+                    break;
+                case MqttPubRelPacket pubRelPacket:
+                    ProcessReceivedPubRelPacket(pubRelPacket, cancellationToken);
+                    break;
+                default:
+                    _packetDispatcher.Dispatch(packet);
+                    break;
             }
-
-            if (packet is MqttPingReqPacket)
-            {
-                return SendAsync(new MqttPingRespPacket(), cancellationToken);
-            }
-
-            if (packet is MqttDisconnectPacket)
-            {
-                return DisconnectAsync();
-            }
-
-            if (packet is MqttPubRelPacket pubRelPacket)
-            {
-                return ProcessReceivedPubRelPacket(pubRelPacket, cancellationToken);
-            }
-
-            _packetDispatcher.Dispatch(packet);
-            return Task.FromResult(0);
         }
 
-        private Task ProcessReceivedPublishPacketAsync(MqttPublishPacket publishPacket, CancellationToken cancellationToken)
+        private void ProcessReceivedPublishPacket(MqttPublishPacket publishPacket, CancellationToken cancellationToken)
         {
-            if (publishPacket.QualityOfServiceLevel == MqttQualityOfServiceLevel.AtMostOnce)
+            switch (publishPacket.QualityOfServiceLevel)
             {
-                FireApplicationMessageReceivedEvent(publishPacket);
-                return Task.FromResult(0);
+                case MqttQualityOfServiceLevel.AtMostOnce:
+                    FireApplicationMessageReceivedEvent(publishPacket);
+                    break;
+                case MqttQualityOfServiceLevel.AtLeastOnce:
+                    FireApplicationMessageReceivedEvent(publishPacket);
+                    SendAsync(new MqttPubAckPacket { PacketIdentifier = publishPacket.PacketIdentifier }, cancellationToken);
+                    break;
+                case MqttQualityOfServiceLevel.ExactlyOnce:
+                    // QoS 2 is implement as method "B" (4.3.3 QoS 2: Exactly once delivery)
+                    FireApplicationMessageReceivedEvent(publishPacket);
+                    SendAsync(new MqttPubRecPacket { PacketIdentifier = publishPacket.PacketIdentifier }, cancellationToken);
+                    break;
+                default:
+                    throw new MqttCommunicationException("Received a not supported QoS level.");
             }
-
-            if (publishPacket.QualityOfServiceLevel == MqttQualityOfServiceLevel.AtLeastOnce)
-            {
-                FireApplicationMessageReceivedEvent(publishPacket);
-                return SendAsync(new MqttPubAckPacket { PacketIdentifier = publishPacket.PacketIdentifier }, cancellationToken);
-            }
-
-            if (publishPacket.QualityOfServiceLevel == MqttQualityOfServiceLevel.ExactlyOnce)
-            {
-                // QoS 2 is implement as method "B" (4.3.3 QoS 2: Exactly once delivery)
-                FireApplicationMessageReceivedEvent(publishPacket);
-                return SendAsync(new MqttPubRecPacket { PacketIdentifier = publishPacket.PacketIdentifier }, cancellationToken);
-            }
-
-            throw new MqttCommunicationException("Received a not supported QoS level.");
         }
 
-        private Task ProcessReceivedPubRelPacket(MqttPubRelPacket pubRelPacket, CancellationToken cancellationToken)
+        private void ProcessReceivedPubRelPacket(MqttPubRelPacket pubRelPacket, CancellationToken cancellationToken)
         {
             var response = new MqttPubCompPacket
             {
                 PacketIdentifier = pubRelPacket.PacketIdentifier
             };
 
-            return SendAsync(response, cancellationToken);
+            SendAsync(response, cancellationToken);
         }
 
         private async Task PublishExactlyOnce(MqttPublishPacket publishPacket, CancellationToken cancellationToken)

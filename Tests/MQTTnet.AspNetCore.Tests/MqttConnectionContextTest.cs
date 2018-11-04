@@ -25,7 +25,7 @@ namespace MQTTnet.AspNetCore.Tests
 
             pipe.Receive.Writer.Complete();
 
-            await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => ctx.ReceivePacketAsync(TimeSpan.FromSeconds(1), CancellationToken.None));
+            await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => ctx.ReceivePacketAsync(CancellationToken.None));
         }
         
         [TestMethod]
