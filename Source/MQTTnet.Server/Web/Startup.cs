@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Net.Http.Headers;
 using Microsoft.OpenApi.Models;
 using Microsoft.Scripting.Utils;
@@ -23,7 +24,7 @@ namespace MQTTnet.Server.Web
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup()
         {
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
@@ -36,7 +37,7 @@ namespace MQTTnet.Server.Web
 
         public void Configure(
             IApplicationBuilder application,
-            IHostingEnvironment environment,
+            IWebHostEnvironment environment,
             MqttServerService mqttServerService,
             PythonScriptHostService pythonScriptHostService,
             DataSharingService dataSharingService,
@@ -62,7 +63,10 @@ namespace MQTTnet.Server.Web
             application.UseStaticFiles();
 
             application.UseHttpsRedirection();
-            application.UseMvc();
+            application.UseEndpoints(endpoint => 
+            {
+                endpoint.MapDefaultControllerRoute();
+            });
 
             ConfigureWebSocketEndpoint(application, mqttServerService, mqttSettings);
 
@@ -89,10 +93,10 @@ namespace MQTTnet.Server.Web
             services.AddCors();
 
             services.AddMvc()
-                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
-                .AddNewtonsoftJson(o =>
+                .SetCompatibilityVersion(CompatibilityVersion.Latest)
+                .AddJsonOptions(options =>
                 {
-                    o.SerializerSettings.Converters.Add(new StringEnumConverter());
+                    //options.JsonSerializerOptions.Converters.Add(new StringEnumConverter());
                 });
 
             ReadMqttSettings(services);

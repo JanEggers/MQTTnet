@@ -3,8 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <DebugType>Full</DebugType>
-    <TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net461;netcoreapp2.1</TargetFrameworks>
-    <TargetFramework Condition=" '$(OS)' != 'Windows_NT' ">netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
   </PropertyGroup>
 
@@ -16,7 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Source\MQTTnet.AspnetCore\MQTTnet.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\Source\MQTTnet\MQTTnet.csproj" />
   </ItemGroup>
 
 </Project>

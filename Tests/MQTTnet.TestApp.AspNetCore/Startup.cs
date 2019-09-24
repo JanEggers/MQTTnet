@@ -12,7 +12,7 @@ namespace MQTTnet.TestApp.AspNetCore2
 {
     public class Startup
     {
-        // In class _Startup_ of the ASP.NET Core 2.0 project.
+        // In class _Startup_ of the ASP.NET Core 3.0 project.
 
         public void ConfigureServices(IServiceCollection services)
         {
@@ -25,12 +25,18 @@ namespace MQTTnet.TestApp.AspNetCore2
                 .AddConnections();
         }
 
-        // In class _Startup_ of the ASP.NET Core 2.0 project.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        // In class _Startup_ of the ASP.NET Core 3.0 project.
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            app.UseConnections(c => c.MapConnectionHandler<MqttConnectionHandler>("/mqtt", options => {
-                options.WebSockets.SubProtocolSelector = MQTTnet.AspNetCore.ApplicationBuilderExtensions.SelectSubProtocol;
-            }));
+            app.UseRouting();
+
+            app.UseEndpoints(endpoint =>
+            {
+                endpoint.MapConnectionHandler<MqttConnectionHandler>("/mqtt", options =>
+                {
+                    options.WebSockets.SubProtocolSelector = MQTTnet.AspNetCore.ApplicationBuilderExtensions.SelectSubProtocol;
+                });
+            });
 
             //app.UseMqttEndpoint();
             app.UseMqttServer(server =>
@@ -71,7 +77,6 @@ namespace MQTTnet.TestApp.AspNetCore2
             });
 
             app.UseStaticFiles();
-
 
             app.UseStaticFiles(new StaticFileOptions
             {

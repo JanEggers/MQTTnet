@@ -22,6 +22,8 @@ namespace MQTTnet.Server
         private MqttClientSessionsManager _clientSessionsManager;
         private IMqttRetainedMessagesManager _retainedMessagesManager;
         private CancellationTokenSource _cancellationTokenSource;
+        private bool _started;
+        private IMqttServerStartedHandler _startedHandler;
 
         public MqttServer(IEnumerable<IMqttServerAdapter> adapters, IMqttNetChildLogger logger)
         {
@@ -34,7 +36,19 @@ namespace MQTTnet.Server
             _eventDispatcher = new MqttServerEventDispatcher(logger.CreateChildLogger(nameof(MqttServerEventDispatcher)));
         }
 
-        public IMqttServerStartedHandler StartedHandler { get; set; }
+        public IMqttServerStartedHandler StartedHandler 
+        { 
+            get => _startedHandler; 
+            set 
+            {
+                _startedHandler = value;
+
+                if (_started) 
+                {
+                    Task.Run(() => _startedHandler.HandleServerStartedAsync(EventArgs.Empty));
+                }
+            } 
+        }
 
         public IMqttServerStoppedHandler StoppedHandler { get; set; }
 
@@ -144,6 +158,8 @@ namespace MQTTnet.Server
             {
                 await startedHandler.HandleServerStartedAsync(EventArgs.Empty).ConfigureAwait(false);
             }
+
+            _started = true;
         }
 
         public async Task StopAsync()

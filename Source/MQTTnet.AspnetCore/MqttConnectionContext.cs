@@ -37,13 +37,8 @@ namespace MQTTnet.AspNetCore
         {
             get
             {
-                var connection = Http?.HttpContext?.Connection;
-                if (connection == null)
-                {
-                    return Connection.ConnectionId;
-                }
-
-                return $"{connection.RemoteIpAddress}:{connection.RemotePort}";
+                var endpoint = Connection.RemoteEndPoint;
+                return $"{endpoint}";
             }
         }
 
