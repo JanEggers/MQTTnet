@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Http.Connections.Features;
 using Microsoft.Extensions.DependencyInjection;
 using MQTTnet.Adapter;
-using MQTTnet.AspNetCore.Client.Tcp;
 using MQTTnet.Client.Options;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
@@ -83,16 +82,10 @@ namespace MQTTnet.AspNetCore
                             var endpoint = new DnsEndPoint(tcpOptions.Server, tcpOptions.GetPort());
 
                             clientBuilder
-                                .UseSockets()
-                                .UseMqtt();
+                                .UseSockets();
 
-
-                            var connection = new TcpConnection(endpoint);
-                            await connection.StartAsync().ConfigureAwait(false);
-
-
-                            //var client = clientBuilder.Build();
-                            //var connection = await client.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
+                            var client = clientBuilder.Build();
+                            var connection = await client.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
 
                             _mqttConnection = MqttConnectionContext.Create(connection, _options.ProtocolVersion);
                             break;

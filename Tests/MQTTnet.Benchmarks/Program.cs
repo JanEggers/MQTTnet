@@ -41,9 +41,6 @@ namespace MQTTnet.Benchmarks
                     BenchmarkRunner.Run<MqttTcpChannelBenchmark>();
                     break;
                 case '7':
-                    BenchmarkRunner.Run<TcpPipesBenchmark>();
-                    break;
-                case '8':
                     BenchmarkRunner.Run<MessageProcessingMqttConnectionContextBenchmark>(new AllowNonOptimized());
                     break;
             }
