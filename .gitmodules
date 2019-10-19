@@ -1,0 +1,3 @@
+[submodule "BedrockTransports"]
+	path = BedrockTransports
+	url = https://github.com/davidfowl/BedrockTransports.git
