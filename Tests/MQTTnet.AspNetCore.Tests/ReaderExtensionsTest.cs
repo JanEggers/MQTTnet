@@ -19,29 +19,23 @@ namespace MQTTnet.AspNetCore.Tests
             var sequence = new ReadOnlySequence<byte>(buffer.Array, buffer.Offset, buffer.Count);
 
             var part = sequence;
-            MqttBasePacket packet;
-            var consumed = part.Start;
-            var observed = part.Start;
-            var result = false;
-            var read = 0;
-
-            var reader = new SpanBasedMqttPacketBodyReader();
+            var reader = new MqttReader(serializer);
 
             part = sequence.Slice(sequence.Start, 0); // empty message should fail
-            result = serializer.TryDecode(reader, part, out packet, out consumed, out observed, out read);
+            bool result = reader.TryParseMessage(part, out _, out _, out _);
             Assert.IsFalse(result);
 
 
             part = sequence.Slice(sequence.Start, 1); // partial fixed header should fail
-            result = serializer.TryDecode(reader, part, out packet, out consumed, out observed, out read);
+            result = reader.TryParseMessage(part, out _, out _, out _);
             Assert.IsFalse(result);
 
             part = sequence.Slice(sequence.Start, 4); // partial body should fail
-            result = serializer.TryDecode(reader, part, out packet, out consumed, out observed, out read);
+            result = reader.TryParseMessage(part, out _, out _, out _);
             Assert.IsFalse(result);
 
             part = sequence; // complete msg should work
-            result = serializer.TryDecode(reader, part, out packet, out consumed, out observed, out read);
+            result = reader.TryParseMessage(part, out _, out _, out _);
             Assert.IsTrue(result);
         }
     }

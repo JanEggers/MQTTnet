@@ -1,65 +1,78 @@
-﻿using System;
-using System.Buffers;
+﻿using Bedrock.Framework.Protocols;
 using MQTTnet.Adapter;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
 using MQTTnet.Packets;
+using System;
+using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public static class ReaderExtensions
+    public class MqttReader : IProtocolReader<MqttBasePacket>
     {
-        public static bool TryDecode(this MqttPacketFormatterAdapter formatter, 
-            SpanBasedMqttPacketBodyReader reader, 
-            in ReadOnlySequence<byte> input, 
-            out MqttBasePacket packet, 
-            out SequencePosition consumed, 
-            out SequencePosition observed,
-            out int bytesRead)
-        {
-            if (formatter == null) throw new ArgumentNullException(nameof(formatter));
+        private readonly MqttPacketFormatterAdapter _packetFormatterAdapter;
+        private readonly SpanBasedMqttPacketBodyReader _reader = new SpanBasedMqttPacketBodyReader();
 
-            packet = null;
+        public MqttReader(MqttPacketFormatterAdapter packetFormatterAdapter)
+        {
+            _packetFormatterAdapter = packetFormatterAdapter;
+        }
+        
+        public long BytesReceived { get; set; }
+
+        public Action ReadingPacketStartedCallback { get; set; }
+        public Action ReadingPacketCompletedCallback { get; set; }
+
+        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
+        {
+            message = null;
             consumed = input.Start;
-            observed = input.End;
-            bytesRead = 0;
+            examined = input.End;
             var copy = input;
 
             if (copy.Length < 2)
             {
+                // we did receive something but the message is not yet complete
+                ReadingPacketStartedCallback?.Invoke();
                 return false;
             }
 
             var fixedheader = copy.First.Span[0];
             if (!TryReadBodyLength(ref copy, out int headerLength, out var bodyLength))
             {
+                // we did receive something but the message is not yet complete
+                ReadingPacketStartedCallback?.Invoke();
                 return false;
             }
 
             if (copy.Length < bodyLength)
             {
+                // we did receive something but the message is not yet complete
+                ReadingPacketStartedCallback?.Invoke();
                 return false;
             }
 
             var bodySlice = copy.Slice(0, bodyLength);
-            var buffer = bodySlice.GetMemory();
-            reader.SetBuffer(buffer);
+            var buffer = GetMemory(bodySlice);
+            _reader.SetBuffer(buffer);
 
-            var receivedMqttPacket = new ReceivedMqttPacket(fixedheader, reader, buffer.Length + 2);
+            var receivedMqttPacket = new ReceivedMqttPacket(fixedheader, _reader, buffer.Length + 2);
 
-            if (formatter.ProtocolVersion == MqttProtocolVersion.Unknown)
+            if (_packetFormatterAdapter.ProtocolVersion == MqttProtocolVersion.Unknown)
             {
-                formatter.DetectProtocolVersion(receivedMqttPacket);
+                _packetFormatterAdapter.DetectProtocolVersion(receivedMqttPacket);
             }
 
-            packet = formatter.Decode(receivedMqttPacket);
+            message = _packetFormatterAdapter.Decode(receivedMqttPacket);
             consumed = bodySlice.End;
-            observed = bodySlice.End;
-            bytesRead = headerLength + bodyLength;
+            examined = bodySlice.End;
+            BytesReceived += headerLength + bodySlice.Length;
+            ReadingPacketCompletedCallback?.Invoke();
             return true;
         }
 
-        private static ReadOnlyMemory<byte> GetMemory(this in ReadOnlySequence<byte> input)
+
+        private static ReadOnlyMemory<byte> GetMemory(in ReadOnlySequence<byte> input)
         {
             if (input.IsSingleSegment)
             {
@@ -79,8 +92,8 @@ namespace MQTTnet.AspNetCore
             var index = 1;
             headerLength = 0;
             bodyLength = 0;
-            
-            var temp = input.Slice(0, Math.Min(5, input.Length)).GetMemory();
+
+            var temp = GetMemory(input.Slice(0, Math.Min(5, input.Length)));
 
             do
             {

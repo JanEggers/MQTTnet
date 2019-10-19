@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BedrockTransports\Bedrock.Framework\Bedrock.Framework.csproj" />
     <ProjectReference Include="..\MQTTnet\MQTTnet.csproj" />
   </ItemGroup>
 

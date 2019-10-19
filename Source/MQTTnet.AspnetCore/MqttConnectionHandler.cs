@@ -23,13 +23,12 @@ namespace MQTTnet.AspNetCore
 
             var writer = new SpanBasedMqttPacketWriter();
             var formatter = new MqttPacketFormatterAdapter(writer);
-            using (var adapter = new MqttConnectionContext(formatter, connection))
+            var adapter = new MqttConnectionContext(formatter, connection);
+
+            var clientHandler = ClientHandler;
+            if (clientHandler != null)
             {
-                var clientHandler = ClientHandler;
-                if (clientHandler != null)
-                {
-                    await clientHandler(adapter).ConfigureAwait(false);
-                }
+                await clientHandler(adapter).ConfigureAwait(false);
             }
         }
 

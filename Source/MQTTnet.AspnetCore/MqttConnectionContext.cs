@@ -11,28 +11,40 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Protocols = Bedrock.Framework.Protocols;
+
 namespace MQTTnet.AspNetCore
 {
-    public class MqttConnectionContext : IMqttChannelAdapter
+    public class MqttConnectionContext : Protocols.Protocol<MqttReader, MqttWriter, MqttBasePacket, MqttBasePacket>, IMqttChannelAdapter
     {
-        public MqttConnectionContext(MqttPacketFormatterAdapter packetFormatterAdapter, ConnectionContext connection)
-        {
-            PacketFormatterAdapter = packetFormatterAdapter ?? throw new ArgumentNullException(nameof(packetFormatterAdapter));
-            Connection = connection ?? throw new ArgumentNullException(nameof(connection));
+        private readonly MqttReader _reader;
+        private readonly MqttWriter _writer;
 
-            if (Connection.Transport != null)
-            {
-                _input = Connection.Transport.Input;
-                _output = Connection.Transport.Output;
-            }
-            
-            _reader = new SpanBasedMqttPacketBodyReader();
+        public MqttConnectionContext(
+            MqttPacketFormatterAdapter packetFormatterAdapter, 
+            ConnectionContext connection)
+               : this(
+                     packetFormatterAdapter,
+                     connection, 
+                     new MqttReader(packetFormatterAdapter),
+                     new MqttWriter(packetFormatterAdapter))
+        {
         }
 
-        private PipeReader _input;
-        private PipeWriter _output;
-        private readonly SpanBasedMqttPacketBodyReader _reader;
 
+        public MqttConnectionContext(
+            MqttPacketFormatterAdapter packetFormatterAdapter, 
+            ConnectionContext connection, 
+            MqttReader reader, 
+            MqttWriter writer)
+            : base(connection, reader, writer, null)
+        {
+            PacketFormatterAdapter = packetFormatterAdapter ?? throw new ArgumentNullException(nameof(packetFormatterAdapter));
+
+            _reader = reader;
+            _writer = writer;
+        }
+        
         public string Endpoint
         {
             get
@@ -48,96 +60,39 @@ namespace MQTTnet.AspNetCore
 
         private IHttpContextFeature Http => Connection.Features.Get<IHttpContextFeature>();
 
-        public ConnectionContext Connection { get; }
         public MqttPacketFormatterAdapter PacketFormatterAdapter { get; }
 
-        public long BytesSent { get; set; }
-        public long BytesReceived { get; set; }
+        public long BytesSent { get => _writer.BytesSent; set => _writer.BytesSent = value; }
+        public long BytesReceived { get => _reader.BytesReceived; set => _reader.BytesReceived = value; }
 
-        public Action ReadingPacketStartedCallback { get; set; }
-        public Action ReadingPacketCompletedCallback { get; set; }
-
-        private readonly SemaphoreSlim _writerSemaphore = new SemaphoreSlim(1, 1);
-
+        public Action ReadingPacketStartedCallback { get => _reader.ReadingPacketStartedCallback; set => _reader.ReadingPacketStartedCallback = value; }
+        public Action ReadingPacketCompletedCallback { get => _reader.ReadingPacketCompletedCallback; set => _reader.ReadingPacketCompletedCallback = value; }
+        
         public async Task ConnectAsync(TimeSpan timeout, CancellationToken cancellationToken)
         {
             if (Connection is TcpConnection tcp && !tcp.IsConnected)
             {
                 await tcp.StartAsync().ConfigureAwait(false);
             }
-
-            _input = Connection.Transport.Input;
-            _output = Connection.Transport.Output;
         }
 
         public Task DisconnectAsync(TimeSpan timeout, CancellationToken cancellationToken)
         {
-            _input?.Complete();
-            _output?.Complete();
-
+            Connection.Transport?.Input?.Complete();
+            Connection.Transport?.Output?.Complete();
             return Task.CompletedTask;
         }
 
         public async Task<MqttBasePacket> ReceivePacketAsync(TimeSpan timeout, CancellationToken cancellationToken)
         {
-            var input = Connection.Transport.Input;
-
-            try
+            var result = await ReadAsync(cancellationToken);
+            if (result == null)
             {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    ReadResult readResult;
-                    var readTask = input.ReadAsync(cancellationToken);
-                    if (readTask.IsCompleted)
-                    {
-                        readResult = readTask.Result;
-                    }
-                    else
-                    {
-                        readResult = await readTask.ConfigureAwait(false);
-                    }
-
-                    var buffer = readResult.Buffer;
-
-                    var consumed = buffer.Start;
-                    var observed = buffer.Start;
-
-                    try
-                    {
-                        if (!buffer.IsEmpty)
-                        {
-                            if (PacketFormatterAdapter.TryDecode(_reader, buffer, out var packet, out consumed, out observed, out var received))
-                            {
-                                BytesReceived += received;
-                                return packet;
-                            }
-                            else
-                            {
-                                // we did receive something but the message is not yet complete
-                                ReadingPacketStartedCallback?.Invoke();
-                            }
-                        }
-                        else if (readResult.IsCompleted)
-                        {
-                            throw new MqttCommunicationException("Connection Aborted");
-                        }
-                    }
-                    finally
-                    {
-                        // The buffer was sliced up to where it was consumed, so we can just advance to the start.
-                        // We mark examined as buffer.End so that if we didn't receive a full frame, we'll wait for more data
-                        // before yielding the read again.
-                        input.AdvanceTo(consumed, observed);
-                    }
-                }
-            }
-            finally
-            {
-                ReadingPacketCompletedCallback?.Invoke();
+                throw new MqttCommunicationException("Connection Aborted");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            return null;
+            return result;
         }
 
         public void ResetStatistics()
@@ -146,28 +101,9 @@ namespace MQTTnet.AspNetCore
             BytesSent = 0;
         }
 
-        public async Task SendPacketAsync(MqttBasePacket packet, TimeSpan timeout, CancellationToken cancellationToken)
+        public Task SendPacketAsync(MqttBasePacket packet, TimeSpan timeout, CancellationToken cancellationToken)
         {
-            var formatter = PacketFormatterAdapter;
-
-
-            await _writerSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                var buffer = formatter.Encode(packet);
-                var msg = buffer.AsMemory();
-                var output = _output;
-                var result = await output.WriteAsync(msg, cancellationToken).ConfigureAwait(false);
-                if (result.IsCompleted)
-                {
-                    BytesSent += msg.Length;
-                }
-                PacketFormatterAdapter.FreeBuffer();
-            }
-            finally
-            {
-                _writerSemaphore.Release();
-            }
+            return WriteAsync(packet, cancellationToken).AsTask();
         }
 
         public void Dispose()
