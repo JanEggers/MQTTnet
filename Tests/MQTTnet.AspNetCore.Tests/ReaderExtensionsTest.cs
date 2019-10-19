@@ -19,7 +19,7 @@ namespace MQTTnet.AspNetCore.Tests
             var sequence = new ReadOnlySequence<byte>(buffer.Array, buffer.Offset, buffer.Count);
 
             var part = sequence;
-            var reader = new MqttReader(serializer);
+            var reader = new MqttProtocolReader(serializer);
 
             part = sequence.Slice(sequence.Start, 0); // empty message should fail
             bool result = reader.TryParseMessage(part, out _, out _, out _);

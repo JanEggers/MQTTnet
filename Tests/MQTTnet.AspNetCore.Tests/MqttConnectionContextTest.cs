@@ -17,31 +17,29 @@ namespace MQTTnet.AspNetCore.Tests
         [TestMethod]
         public async Task TestReceivePacketAsyncThrowsWhenReaderCompleted()
         {
-            var serializer = new MqttPacketFormatterAdapter(MqttProtocolVersion.V311);
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = new MqttConnectionContext(serializer, connection);
+            var ctx = MqttConnectionContext.Create(connection, MqttProtocolVersion.V311);
 
             pipe.Receive.Writer.Complete();
 
-            await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => ctx.ReceivePacketAsync(TimeSpan.Zero, CancellationToken.None));
+            await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => ctx.ReadAsync(CancellationToken.None).AsTask());
         }
         
         [TestMethod]
         public async Task TestParallelWrites()
         {
-            var serializer = new MqttPacketFormatterAdapter(MqttProtocolVersion.V311);
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = new MqttConnectionContext(serializer, connection);
+            var ctx = MqttConnectionContext.Create(connection, MqttProtocolVersion.V311);
 
             var tasks = Enumerable.Range(1, 10).Select(_ => Task.Run(async () => 
             {
                 for (int i = 0; i < 100; i++)
                 {
-                    await ctx.SendPacketAsync(new MqttPublishPacket(), TimeSpan.Zero, CancellationToken.None).ConfigureAwait(false);
+                    await ctx.WriteAsync(new MqttPublishPacket(), CancellationToken.None).ConfigureAwait(false);
                 }
             }));
 
@@ -52,13 +50,12 @@ namespace MQTTnet.AspNetCore.Tests
         [TestMethod]
         public async Task TestLargePacket()
         {
-            var serializer = new MqttPacketFormatterAdapter(MqttProtocolVersion.V311);
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = new MqttConnectionContext(serializer, connection);
+            var ctx = MqttConnectionContext.Create(connection, MqttProtocolVersion.V311);
 
-            await ctx.SendPacketAsync(new MqttPublishPacket() { Payload = new byte[20_000] }, TimeSpan.Zero, CancellationToken.None).ConfigureAwait(false);
+            await ctx.WriteAsync(new MqttPublishPacket() { Payload = new byte[20_000] }, CancellationToken.None).ConfigureAwait(false);
 
             var readResult = await pipe.Send.Reader.ReadAsync();
             Assert.IsTrue(readResult.Buffer.Length > 20000);

@@ -6,12 +6,12 @@ using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttWriter : IProtocolWriter<MqttBasePacket>
+    public class MqttProtocolWriter : IProtocolWriter<MqttBasePacket>
     {
         private readonly MqttPacketFormatterAdapter _packetFormatterAdapter;
         public long BytesSent { get; set; }
 
-        public MqttWriter(MqttPacketFormatterAdapter packetFormatterAdapter)
+        public MqttProtocolWriter(MqttPacketFormatterAdapter packetFormatterAdapter)
         {
             _packetFormatterAdapter = packetFormatterAdapter;
         }

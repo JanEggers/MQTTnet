@@ -88,7 +88,12 @@ namespace MQTTnet.Client
                     await _adapter.ConnectAsync(options.CommunicationTimeout, combined.Token).ConfigureAwait(false);
                     _logger.Verbose("Connection with server established.");
 
-                    _packetReceiverTask = Task.Run(() => TryReceivePacketsAsync(backgroundCancellationToken), backgroundCancellationToken);
+                if (_adapter.PacketFormatterAdapter == null)
+                {
+                    throw new ArgumentNullException(nameof(_adapter.PacketFormatterAdapter), $"Error in {_adapter.GetType().Name}.{nameof(_adapter.ConnectAsync)}: connect must initialize {nameof(_adapter.PacketFormatterAdapter)}");
+                }
+
+                _packetReceiverTask = Task.Run(() => TryReceivePacketsAsync(backgroundCancellationToken), backgroundCancellationToken);
 
                     authenticateResult = await AuthenticateAsync(adapter, options.WillMessage, combined.Token).ConfigureAwait(false);
                 }

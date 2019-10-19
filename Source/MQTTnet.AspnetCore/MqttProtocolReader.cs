@@ -8,12 +8,12 @@ using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttReader : IProtocolReader<MqttBasePacket>
+    public class MqttProtocolReader : IProtocolReader<MqttBasePacket>
     {
         private readonly MqttPacketFormatterAdapter _packetFormatterAdapter;
         private readonly SpanBasedMqttPacketBodyReader _reader = new SpanBasedMqttPacketBodyReader();
 
-        public MqttReader(MqttPacketFormatterAdapter packetFormatterAdapter)
+        public MqttProtocolReader(MqttPacketFormatterAdapter packetFormatterAdapter)
         {
             _packetFormatterAdapter = packetFormatterAdapter;
         }

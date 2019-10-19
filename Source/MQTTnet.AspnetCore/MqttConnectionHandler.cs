@@ -21,9 +21,8 @@ namespace MQTTnet.AspNetCore
                 transferFormatFeature.ActiveFormat = TransferFormat.Binary;
             }
 
-            var writer = new SpanBasedMqttPacketWriter();
-            var formatter = new MqttPacketFormatterAdapter(writer);
-            var adapter = new MqttConnectionContext(formatter, connection);
+            var mqttconnection = MqttConnectionContext.Create(connection);
+            var adapter = MqttConnectionChannelAdapter.ForConnection(mqttconnection);
 
             var clientHandler = ClientHandler;
             if (clientHandler != null)
