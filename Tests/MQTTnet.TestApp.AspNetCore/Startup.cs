@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using MQTTnet.AspNetCore;
 using MQTTnet.Server;
 
 namespace MQTTnet.TestApp.AspNetCore2
@@ -21,7 +20,7 @@ namespace MQTTnet.TestApp.AspNetCore2
                 .Build();
             services
                 .AddHostedMqttServer(mqttServerOptions)
-                .AddMqttConnectionHandler()
+                .AddMqttServer()
                 .AddConnections();
         }
 
@@ -32,10 +31,7 @@ namespace MQTTnet.TestApp.AspNetCore2
 
             app.UseEndpoints(endpoint =>
             {
-                endpoint.MapConnectionHandler<MqttConnectionHandler>("/mqtt", options =>
-                {
-                    options.WebSockets.SubProtocolSelector = MQTTnet.AspNetCore.ApplicationBuilderExtensions.SelectSubProtocol;
-                });
+                endpoint.MapMqtt("/mqtt");
             });
 
             //app.UseMqttEndpoint();

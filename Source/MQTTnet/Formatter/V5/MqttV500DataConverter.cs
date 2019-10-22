@@ -24,28 +24,28 @@ namespace MQTTnet.Formatter.V5
 
             var packet = new MqttPublishPacket
             {
-                Topic = applicationMessage.Topic,
+                //Topic = applicationMessage.Topic,
                 Payload = applicationMessage.Payload,
                 QualityOfServiceLevel = applicationMessage.QualityOfServiceLevel,
                 Retain = applicationMessage.Retain,
                 Dup = false,
-                Properties = new MqttPublishPacketProperties
-                {
-                    ContentType = applicationMessage.ContentType,
-                    CorrelationData = applicationMessage.CorrelationData,
-                    MessageExpiryInterval = applicationMessage.MessageExpiryInterval,
-                    PayloadFormatIndicator = applicationMessage.PayloadFormatIndicator,
-                    ResponseTopic = applicationMessage.ResponseTopic,
-                    SubscriptionIdentifiers = applicationMessage.SubscriptionIdentifiers,
-                    TopicAlias = applicationMessage.TopicAlias
-                }
+                //Properties = new MqttPublishPacketProperties
+                //{
+                //    ContentType = applicationMessage.ContentType,
+                //    CorrelationData = applicationMessage.CorrelationData,
+                //    MessageExpiryInterval = applicationMessage.MessageExpiryInterval,
+                //    PayloadFormatIndicator = applicationMessage.PayloadFormatIndicator,
+                //    ResponseTopic = applicationMessage.ResponseTopic,
+                //    SubscriptionIdentifiers = applicationMessage.SubscriptionIdentifiers,
+                //    TopicAlias = applicationMessage.TopicAlias
+                //}
             };
 
-            if (applicationMessage.UserProperties != null)
-            {
-                packet.Properties.UserProperties = new List<MqttUserProperty>();
-                packet.Properties.UserProperties.AddRange(applicationMessage.UserProperties);
-            }
+            //if (applicationMessage.UserProperties != null)
+            //{
+            //    packet.Properties.UserProperties = new List<MqttUserProperty>();
+            //    packet.Properties.UserProperties.AddRange(applicationMessage.UserProperties);
+            //}
 
             return packet;
         }
@@ -63,18 +63,18 @@ namespace MQTTnet.Formatter.V5
         {
             return new MqttApplicationMessage
             {
-                Topic = publishPacket.Topic,
-                Payload = publishPacket.Payload,
-                QualityOfServiceLevel = publishPacket.QualityOfServiceLevel,
-                Retain = publishPacket.Retain,
-                ResponseTopic = publishPacket.Properties?.ResponseTopic,
-                ContentType = publishPacket.Properties?.ContentType,
-                CorrelationData = publishPacket.Properties?.CorrelationData,
-                MessageExpiryInterval = publishPacket.Properties?.MessageExpiryInterval,
-                SubscriptionIdentifiers = publishPacket.Properties?.SubscriptionIdentifiers,
-                TopicAlias = publishPacket.Properties?.TopicAlias,
-                PayloadFormatIndicator = publishPacket.Properties?.PayloadFormatIndicator,
-                UserProperties = publishPacket.Properties?.UserProperties ?? new List<MqttUserProperty>()
+                //Topic = publishPacket.Topic,
+                //Payload = publishPacket.Payload,
+                //QualityOfServiceLevel = publishPacket.QualityOfServiceLevel,
+                //Retain = publishPacket.Retain,
+                //ResponseTopic = publishPacket.Properties?.ResponseTopic,
+                //ContentType = publishPacket.Properties?.ContentType,
+                //CorrelationData = publishPacket.Properties?.CorrelationData,
+                //MessageExpiryInterval = publishPacket.Properties?.MessageExpiryInterval,
+                //SubscriptionIdentifiers = publishPacket.Properties?.SubscriptionIdentifiers,
+                //TopicAlias = publishPacket.Properties?.TopicAlias,
+                //PayloadFormatIndicator = publishPacket.Properties?.PayloadFormatIndicator,
+                //UserProperties = publishPacket.Properties?.UserProperties ?? new List<MqttUserProperty>()
             };
         }
 

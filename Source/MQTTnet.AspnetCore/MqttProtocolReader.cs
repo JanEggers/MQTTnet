@@ -17,46 +17,48 @@ namespace MQTTnet.AspNetCore
         {
             _packetFormatterAdapter = packetFormatterAdapter;
         }
-        
-        public long BytesReceived { get; set; }
 
-        public Action ReadingPacketStartedCallback { get; set; }
-        public Action ReadingPacketCompletedCallback { get; set; }
-
-        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
+        public static bool TryReadMessage(in ReadOnlySequence<byte> input, out byte header, out ReadOnlyMemory<byte> body, out SequencePosition consumed) 
         {
-            message = null;
+            header = default;
+            body = default;
             consumed = input.Start;
-            examined = input.End;
-            var copy = input;
 
-            if (copy.Length < 2)
+            if (input.Length < 2)
             {
-                // we did receive something but the message is not yet complete
-                ReadingPacketStartedCallback?.Invoke();
                 return false;
             }
 
-            var fixedheader = copy.First.Span[0];
-            if (!TryReadBodyLength(ref copy, out int headerLength, out var bodyLength))
+            var copy = input;
+            if (!TryReadBodyLength(ref copy, out var bodyLength))
             {
-                // we did receive something but the message is not yet complete
-                ReadingPacketStartedCallback?.Invoke();
                 return false;
             }
 
             if (copy.Length < bodyLength)
             {
-                // we did receive something but the message is not yet complete
-                ReadingPacketStartedCallback?.Invoke();
                 return false;
             }
 
+            header = input.First.Span[0];
             var bodySlice = copy.Slice(0, bodyLength);
-            var buffer = GetMemory(bodySlice);
-            _reader.SetBuffer(buffer);
+            body = GetMemory(bodySlice);
+            consumed = bodySlice.End;
+            return true;
+        }
 
-            var receivedMqttPacket = new ReceivedMqttPacket(fixedheader, _reader, buffer.Length + 2);
+        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
+        {
+            message = null;
+            examined = input.End;
+            if (!TryReadMessage(input, out var fixedheader, out var body, out consumed))
+            {
+                return false;
+            }
+            
+            _reader.SetBuffer(body);
+
+            var receivedMqttPacket = new ReceivedMqttPacket(fixedheader, _reader, body.Length + 2);
 
             if (_packetFormatterAdapter.ProtocolVersion == MqttProtocolVersion.Unknown)
             {
@@ -64,10 +66,7 @@ namespace MQTTnet.AspNetCore
             }
 
             message = _packetFormatterAdapter.Decode(receivedMqttPacket);
-            consumed = bodySlice.End;
-            examined = bodySlice.End;
-            BytesReceived += headerLength + bodySlice.Length;
-            ReadingPacketCompletedCallback?.Invoke();
+            examined = consumed;
             return true;
         }
 
@@ -83,14 +82,13 @@ namespace MQTTnet.AspNetCore
             return input.ToArray();
         }
 
-        private static bool TryReadBodyLength(ref ReadOnlySequence<byte> input, out int headerLength, out int bodyLength)
+        public static bool TryReadBodyLength(ref ReadOnlySequence<byte> input, out int bodyLength)
         {
             // Alorithm taken from https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html.
             var multiplier = 1;
             var value = 0;
             byte encodedByte;
             var index = 1;
-            headerLength = 0;
             bodyLength = 0;
 
             var temp = GetMemory(input.Slice(0, Math.Min(5, input.Length)));
@@ -114,8 +112,6 @@ namespace MQTTnet.AspNetCore
             } while ((encodedByte & 128) != 0);
 
             input = input.Slice(index);
-
-            headerLength = index;
             bodyLength = value;
             return true;
         }

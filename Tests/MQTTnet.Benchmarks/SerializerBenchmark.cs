@@ -8,6 +8,7 @@ using MQTTnet.Adapter;
 using MQTTnet.Channel;
 using MQTTnet.Formatter;
 using MQTTnet.Formatter.V3;
+using System.Text;
 using BenchmarkDotNet.Jobs;
 
 namespace MQTTnet.Benchmarks
@@ -26,7 +27,7 @@ namespace MQTTnet.Benchmarks
         {
             _packet = new MqttPublishPacket
             {
-                Topic = "A"
+                Topic = Encoding.UTF8.GetBytes("A")
             };
 
             _serializer = new MqttV311PacketFormatter();

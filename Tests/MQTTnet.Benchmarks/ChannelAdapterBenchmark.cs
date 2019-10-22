@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using System.Threading;
 using MQTTnet.Formatter;
+using System.Text;
 
 namespace MQTTnet.Benchmarks
 {
@@ -23,7 +24,7 @@ namespace MQTTnet.Benchmarks
         {
             _packet = new MqttPublishPacket
             {
-                Topic = "A"
+                Topic = Encoding.UTF8.GetBytes("A")
             };
 
             var serializer = new MqttPacketFormatterAdapter(MqttProtocolVersion.V311);

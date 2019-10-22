@@ -1,5 +1,6 @@
 #if NETCOREAPP
 using System.Buffers;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Packets;
@@ -14,7 +15,7 @@ namespace MQTTnet.AspNetCore.Tests
         {
             var serializer = new MqttPacketFormatterAdapter(MqttProtocolVersion.V311);
 
-            var buffer = serializer.Encode(new MqttPublishPacket() {Topic = "a", Payload = new byte[5]});
+            var buffer = serializer.Encode(new MqttPublishPacket() {Topic = Encoding.UTF8.GetBytes("a"), Payload = new byte[5]});
 
             var sequence = new ReadOnlySequence<byte>(buffer.Array, buffer.Offset, buffer.Count);
 

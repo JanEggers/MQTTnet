@@ -568,7 +568,7 @@ namespace MQTTnet.Formatter.V5
 
             var packet = new MqttPublishPacket
             {
-                Topic = body.ReadStringWithLengthPrefix(),
+                //Topic = body.ReadStringWithLengthPrefix(),
                 Retain = retain,
                 QualityOfServiceLevel = qos,
                 Dup = dup
@@ -582,57 +582,57 @@ namespace MQTTnet.Formatter.V5
             var propertiesReader = new MqttV500PropertiesReader(body);
             while (propertiesReader.MoveNext())
             {
-                if (packet.Properties == null)
-                {
-                    packet.Properties = new MqttPublishPacketProperties();
-                }
+            //    if (packet.Properties == null)
+            //    {
+            //        packet.Properties = new MqttPublishPacketProperties();
+            //    }
 
-                if (propertiesReader.CurrentPropertyId == MqttPropertyId.PayloadFormatIndicator)
-                {
-                    packet.Properties.PayloadFormatIndicator = propertiesReader.ReadPayloadFormatIndicator();
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.MessageExpiryInterval)
-                {
-                    packet.Properties.MessageExpiryInterval = propertiesReader.ReadMessageExpiryInterval();
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.TopicAlias)
-                {
-                    packet.Properties.TopicAlias = propertiesReader.ReadTopicAlias();
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.ResponseTopic)
-                {
-                    packet.Properties.ResponseTopic = propertiesReader.ReadResponseTopic();
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.CorrelationData)
-                {
-                    packet.Properties.CorrelationData = propertiesReader.ReadCorrelationData();
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.SubscriptionIdentifier)
-                {
-                    if (packet.Properties.SubscriptionIdentifiers == null)
-                    {
-                        packet.Properties.SubscriptionIdentifiers = new List<uint>();
-                    }
+            //    if (propertiesReader.CurrentPropertyId == MqttPropertyId.PayloadFormatIndicator)
+            //    {
+            //        packet.Properties.PayloadFormatIndicator = propertiesReader.ReadPayloadFormatIndicator();
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.MessageExpiryInterval)
+            //    {
+            //        packet.Properties.MessageExpiryInterval = propertiesReader.ReadMessageExpiryInterval();
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.TopicAlias)
+            //    {
+            //        packet.Properties.TopicAlias = propertiesReader.ReadTopicAlias();
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.ResponseTopic)
+            //    {
+            //        packet.Properties.ResponseTopic = propertiesReader.ReadResponseTopic();
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.CorrelationData)
+            //    {
+            //        packet.Properties.CorrelationData = propertiesReader.ReadCorrelationData();
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.SubscriptionIdentifier)
+            //    {
+            //        if (packet.Properties.SubscriptionIdentifiers == null)
+            //        {
+            //            packet.Properties.SubscriptionIdentifiers = new List<uint>();
+            //        }
 
-                    packet.Properties.SubscriptionIdentifiers.Add(propertiesReader.ReadSubscriptionIdentifier());
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.ContentType)
-                {
-                    packet.Properties.ContentType = propertiesReader.ReadContentType();
-                }
-                else if (propertiesReader.CurrentPropertyId == MqttPropertyId.UserProperty)
-                {
-                    if (packet.Properties.UserProperties == null)
-                    {
-                        packet.Properties.UserProperties = new List<MqttUserProperty>();
-                    }
+            //        packet.Properties.SubscriptionIdentifiers.Add(propertiesReader.ReadSubscriptionIdentifier());
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.ContentType)
+            //    {
+            //        packet.Properties.ContentType = propertiesReader.ReadContentType();
+            //    }
+            //    else if (propertiesReader.CurrentPropertyId == MqttPropertyId.UserProperty)
+            //    {
+            //        if (packet.Properties.UserProperties == null)
+            //        {
+            //            packet.Properties.UserProperties = new List<MqttUserProperty>();
+            //        }
 
-                    propertiesReader.AddUserPropertyTo(packet.Properties.UserProperties);
-                }
-                else
-                {
-                    propertiesReader.ThrowInvalidPropertyIdException(typeof(MqttPublishPacket));
-                }
+            //        propertiesReader.AddUserPropertyTo(packet.Properties.UserProperties);
+            //    }
+            //    else
+            //    {
+            //        propertiesReader.ThrowInvalidPropertyIdException(typeof(MqttPublishPacket));
+            //    }
             }
 
             if (!body.EndOfStream)

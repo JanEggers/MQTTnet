@@ -1,16 +1,20 @@
 ﻿using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
-using MQTTnet.Adapter;
-using MQTTnet.Server;
-using System;
 using System.Threading.Tasks;
-using MQTTnet.Formatter;
+using MQTTnet.Packets;
+using System;
+using Bedrock.Framework.Protocols;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttConnectionHandler : ConnectionHandler, IMqttServerAdapter
+    public class MqttConnectionHandler : ConnectionHandler
     {
-        public Func<IMqttChannelAdapter, Task> ClientHandler { get; set; }
+        public MqttConnectionHandler(AspNetMqttServer server)
+        {
+            Server = server;
+        }
+
+        public AspNetMqttServer Server { get; }
 
         public override async Task OnConnectedAsync(ConnectionContext connection)
         {
@@ -21,28 +25,39 @@ namespace MQTTnet.AspNetCore
                 transferFormatFeature.ActiveFormat = TransferFormat.Binary;
             }
 
-            var mqttconnection = MqttConnectionContext.Create(connection);
-            var adapter = MqttConnectionChannelAdapter.ForConnection(mqttconnection);
+            var ct = connection.ConnectionClosed;
+            var connectProtocol = connection.ReadProtocol(new MqttProtocolVersionReader());
+            var protocolVersion = await connectProtocol.ReadAsync(ct);
 
-            var clientHandler = ClientHandler;
-            if (clientHandler != null)
+            var reader = connection.ReadMqtt(protocolVersion);
+            var writer = connection.WriteMqtt(protocolVersion);
+
+            while (!ct.IsCancellationRequested)
             {
-                await clientHandler(adapter).ConfigureAwait(false);
+                try
+                {
+                    var packet = await reader.ReadAsync(ct);
+
+                    switch (packet)
+                    {
+                        case MqttConnectPacket connect:
+                            await writer.WriteAsync(new MqttConnAckPacket()
+                            {
+                                ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
+                            });
+                            break;
+                        case MqttPublishPacket pub:
+                            Server.Packets.OnNext(pub);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
             }
-        }
-
-        public Task StartAsync(IMqttServerOptions options)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

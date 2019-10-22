@@ -1,12 +1,12 @@
 ﻿using System;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MQTTnet.Adapter;
 using MQTTnet.Diagnostics;
 using MQTTnet.Server;
 using MQTTnet.Implementations;
+using MQTTnet.AspNetCore;
 
-namespace MQTTnet.AspNetCore
+namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
@@ -67,7 +67,7 @@ namespace MQTTnet.AspNetCore
             services.AddSingleton<MqttHostedServer>();
             services.AddSingleton<IHostedService>(s => s.GetService<MqttHostedServer>());
             services.AddSingleton<IMqttServer>(s => s.GetService<MqttHostedServer>());
-            
+
             return services;
         }
 
@@ -87,10 +87,10 @@ namespace MQTTnet.AspNetCore
             return services;
         }
 
-        public static IServiceCollection AddMqttConnectionHandler(this IServiceCollection services)
+        public static IServiceCollection AddMqttServer(this IServiceCollection services)
         {
             services.AddSingleton<MqttConnectionHandler>();
-            services.AddSingleton<IMqttServerAdapter>(s => s.GetService<MqttConnectionHandler>());
+            services.AddSingleton<AspNetMqttServer>();
 
             return services;
         }

@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore;
+﻿using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using MQTTnet.AspNetCore;
 using System.Threading.Tasks;
 
 namespace MQTTnet.TestApp.AspNetCore2

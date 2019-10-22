@@ -393,8 +393,8 @@ namespace MQTTnet.Server
                             return;
                         }
 
-                        publishPacket.Topic = context.ApplicationMessage.Topic;
-                        publishPacket.Payload = context.ApplicationMessage.Payload;
+                        //publishPacket.Topic = context.ApplicationMessage.Topic;
+                        //publishPacket.Payload = context.ApplicationMessage.Payload;
                         publishPacket.QualityOfServiceLevel = context.ApplicationMessage.QualityOfServiceLevel;
                     }
 

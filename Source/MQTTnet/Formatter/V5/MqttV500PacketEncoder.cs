@@ -251,17 +251,17 @@ namespace MQTTnet.Formatter.V5
             }
 
             var propertiesWriter = new MqttV500PropertiesWriter();
-            if (packet.Properties != null)
-            {
-                propertiesWriter.WritePayloadFormatIndicator(packet.Properties.PayloadFormatIndicator);
-                propertiesWriter.WriteMessageExpiryInterval(packet.Properties.MessageExpiryInterval);
-                propertiesWriter.WriteTopicAlias(packet.Properties.TopicAlias);
-                propertiesWriter.WriteResponseTopic(packet.Properties.ResponseTopic);
-                propertiesWriter.WriteCorrelationData(packet.Properties.CorrelationData);
-                propertiesWriter.WriteSubscriptionIdentifiers(packet.Properties.SubscriptionIdentifiers);
-                propertiesWriter.WriteContentType(packet.Properties.ContentType);
-                propertiesWriter.WriteUserProperties(packet.Properties.UserProperties);
-            }
+            //if (packet.Properties != null)
+            //{
+            //    propertiesWriter.WritePayloadFormatIndicator(packet.Properties.PayloadFormatIndicator);
+            //    propertiesWriter.WriteMessageExpiryInterval(packet.Properties.MessageExpiryInterval);
+            //    propertiesWriter.WriteTopicAlias(packet.Properties.TopicAlias);
+            //    propertiesWriter.WriteResponseTopic(packet.Properties.ResponseTopic);
+            //    propertiesWriter.WriteCorrelationData(packet.Properties.CorrelationData);
+            //    propertiesWriter.WriteSubscriptionIdentifiers(packet.Properties.SubscriptionIdentifiers);
+            //    propertiesWriter.WriteContentType(packet.Properties.ContentType);
+            //    propertiesWriter.WriteUserProperties(packet.Properties.UserProperties);
+            //}
 
             propertiesWriter.WriteTo(packetWriter);
 

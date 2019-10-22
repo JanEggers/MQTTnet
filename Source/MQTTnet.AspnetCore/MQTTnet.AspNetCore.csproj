@@ -6,7 +6,7 @@
     <Company />
     <Authors />
     <PackageId />
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -19,6 +19,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Connections" Version="1.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.WebSockets" Version="2.1.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.1" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="4.2.0" />
   </ItemGroup>
 
   <ItemGroup>

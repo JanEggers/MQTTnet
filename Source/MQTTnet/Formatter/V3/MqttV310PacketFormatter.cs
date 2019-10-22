@@ -214,7 +214,7 @@ namespace MQTTnet.Formatter.V3
             var qualityOfServiceLevel = (MqttQualityOfServiceLevel)(receivedMqttPacket.FixedHeader >> 1 & 0x3);
             var dup = (receivedMqttPacket.FixedHeader & 0x8) > 0;
 
-            var topic = receivedMqttPacket.Body.ReadStringWithLengthPrefix();
+            var topic = receivedMqttPacket.Body.ReadWithLengthPrefix();
 
             ushort? packetIdentifier = null;
             if (qualityOfServiceLevel > MqttQualityOfServiceLevel.AtMostOnce)

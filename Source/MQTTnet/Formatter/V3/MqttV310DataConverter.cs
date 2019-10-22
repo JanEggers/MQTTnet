@@ -27,7 +27,7 @@ namespace MQTTnet.Formatter.V3
 
             return new MqttPublishPacket
             {
-                Topic = applicationMessage.Topic,
+                //Topic = applicationMessage.Topic,
                 Payload = applicationMessage.Payload,
                 QualityOfServiceLevel = applicationMessage.QualityOfServiceLevel,
                 Retain = applicationMessage.Retain,
@@ -50,7 +50,7 @@ namespace MQTTnet.Formatter.V3
 
             return new MqttApplicationMessage
             {
-                Topic = publishPacket.Topic,
+                //Topic = publishPacket.Topic,
                 Payload = publishPacket.Payload,
                 QualityOfServiceLevel = publishPacket.QualityOfServiceLevel,
                 Retain = publishPacket.Retain
