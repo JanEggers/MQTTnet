@@ -26,8 +26,7 @@ namespace MQTTnet.AspNetCore
             }
 
             var ct = connection.ConnectionClosed;
-            var connectProtocol = connection.ReadProtocol(new MqttProtocolVersionReader());
-            var protocolVersion = await connectProtocol.ReadAsync(ct);
+            var protocolVersion = await connection.ReadMqttVersion().ReadAsync(ct);
 
             var reader = connection.ReadMqtt(protocolVersion);
             var writer = connection.WriteMqtt(protocolVersion);
