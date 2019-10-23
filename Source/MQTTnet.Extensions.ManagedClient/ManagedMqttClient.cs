@@ -209,8 +209,8 @@ namespace MQTTnet.Extensions.ManagedClient
             {
                 foreach (var topicFilter in topicFilters)
                 {
-                    _subscriptions[topicFilter.Topic] = topicFilter.QualityOfServiceLevel;
-                    _unsubscriptions.Remove(topicFilter.Topic);
+                    //_subscriptions[topicFilter.Topic] = topicFilter.QualityOfServiceLevel;
+                    _subscriptionsNotPushed = true;
                 }
             }
             _subscriptionsQueuedSignal.Release();
@@ -452,61 +452,32 @@ namespace MQTTnet.Extensions.ManagedClient
                 List<TopicFilter> subscriptions;
                 HashSet<string> unsubscriptions;
 
-                lock (_subscriptions)
-                {
-                    subscriptions = _subscriptions.Select(i => new TopicFilter { Topic = i.Key, QualityOfServiceLevel = i.Value }).ToList();
-                    _subscriptions.Clear();
-                    unsubscriptions = new HashSet<string>(_unsubscriptions);
-                    _unsubscriptions.Clear();
-                }
+            //lock (_subscriptions)
+            //{
+            //    subscriptions = _subscriptions.Select(i => new TopicFilter { Topic = i.Key, QualityOfServiceLevel = i.Value }).ToList();
 
-                if (!subscriptions.Any() && !unsubscriptions.Any())
-                {
-                    continue;
-                }
+            //    unsubscriptions = new HashSet<string>(_unsubscriptions);
+            //    _unsubscriptions.Clear();
 
-                _logger.Verbose($"Publishing subscriptions ({subscriptions.Count} subscriptions and {unsubscriptions.Count} unsubscriptions)");
+            //    _subscriptionsNotPushed = false;
+            //}
 
-                foreach (var unsubscription in unsubscriptions)
-                {
-                    _reconnectSubscriptions.Remove(unsubscription);
-                }
-
-                foreach (var subscription in subscriptions)
-                {
-                    _reconnectSubscriptions[subscription.Topic] = subscription.QualityOfServiceLevel;
-                }
-
-                try
-                {
-                    if (unsubscriptions.Any())
-                    {
-                        await _mqttClient.UnsubscribeAsync(unsubscriptions.ToArray()).ConfigureAwait(false);
-                    }
-
-                    if (subscriptions.Any())
-                    {
-                        await _mqttClient.SubscribeAsync(subscriptions.ToArray()).ConfigureAwait(false);
-                    }
-                }
-                catch (Exception exception)
-                {
-                    await HandleSubscriptionExceptionAsync(exception).ConfigureAwait(false);
-                }
-            }
-        }
-
-        private async Task PublishReconnectSubscriptionsAsync()
-        {
-            _logger.Info("Publishing subscriptions at reconnect");
+            //if (!subscriptions.Any() && !unsubscriptions.Any())
+            //{
+            //    return;
+            //}
 
             try
             {
-                if (_reconnectSubscriptions.Any())
-                {
-                    var subscriptions = _reconnectSubscriptions.Select(i => new TopicFilter { Topic = i.Key, QualityOfServiceLevel = i.Value });
-                    await _mqttClient.SubscribeAsync(subscriptions.ToArray()).ConfigureAwait(false);
-                }
+                //if (unsubscriptions.Any())
+                //{
+                //    await _mqttClient.UnsubscribeAsync(unsubscriptions.ToArray()).ConfigureAwait(false);
+                //}
+
+                //if (subscriptions.Any())
+                //{
+                //    await _mqttClient.SubscribeAsync(subscriptions.ToArray()).ConfigureAwait(false);
+                //}
             }
             catch (Exception exception)
             {

@@ -121,10 +121,10 @@ namespace MQTTnet.Server
             {
                 foreach (var topicFilter in topicFilters)
                 {
-                    if (!MqttTopicFilterComparer.IsMatch(retainedMessage.Topic, topicFilter.Topic))
-                    {
-                        continue;
-                    }
+                    //if (!MqttTopicFilterComparer.IsMatch(retainedMessage.Topic, topicFilter.Topic))
+                    //{
+                    //    continue;
+                    //}
 
                     matchingRetainedMessages.Add(retainedMessage);
                     break;

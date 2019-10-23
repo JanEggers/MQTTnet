@@ -407,7 +407,7 @@ namespace MQTTnet.Formatter.V5
 
                 packet.TopicFilters.Add(new TopicFilter
                 {
-                    Topic = topic,
+                    //Topic = topic,
                     QualityOfServiceLevel = qos,
                     NoLocal = noLocal,
                     RetainAsPublished = retainAsPublished,

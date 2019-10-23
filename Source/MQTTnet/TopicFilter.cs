@@ -4,7 +4,7 @@ namespace MQTTnet
 {
     public class TopicFilter
     {
-        public string Topic { get; set; }
+        public byte[] Topic { get; set; }
 
         public MqttQualityOfServiceLevel QualityOfServiceLevel { get; set; }
 

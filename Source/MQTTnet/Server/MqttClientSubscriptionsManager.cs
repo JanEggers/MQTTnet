@@ -38,38 +38,38 @@ namespace MQTTnet.Server
                 CloseConnection = false
             };
 
-            foreach (var originalTopicFilter in subscribePacket.TopicFilters)
-            {
-                var interceptorContext = await InterceptSubscribeAsync(originalTopicFilter).ConfigureAwait(false);
+            //foreach (var originalTopicFilter in subscribePacket.TopicFilters)
+            //{
+            //    var interceptorContext = await InterceptSubscribeAsync(originalTopicFilter).ConfigureAwait(false);
 
-                var finalTopicFilter = interceptorContext.TopicFilter;
+            //    var finalTopicFilter = interceptorContext.TopicFilter;
 
-                if (finalTopicFilter == null || string.IsNullOrEmpty(finalTopicFilter.Topic) || !interceptorContext.AcceptSubscription)
-                {
-                    result.ResponsePacket.ReturnCodes.Add(MqttSubscribeReturnCode.Failure);
-                    result.ResponsePacket.ReasonCodes.Add(MqttSubscribeReasonCode.UnspecifiedError);
-                }
-                else
-                {
-                    result.ResponsePacket.ReturnCodes.Add(ConvertToSubscribeReturnCode(finalTopicFilter.QualityOfServiceLevel));
-                    result.ResponsePacket.ReasonCodes.Add(ConvertToSubscribeReasonCode(finalTopicFilter.QualityOfServiceLevel));
-                }
+            //    if (finalTopicFilter == null || string.IsNullOrEmpty(finalTopicFilter.Topic) || !interceptorContext.AcceptSubscription)
+            //    {
+            //        result.ResponsePacket.ReturnCodes.Add(MqttSubscribeReturnCode.Failure);
+            //        result.ResponsePacket.ReasonCodes.Add(MqttSubscribeReasonCode.UnspecifiedError);
+            //    }
+            //    else
+            //    {
+            //        result.ResponsePacket.ReturnCodes.Add(ConvertToSubscribeReturnCode(finalTopicFilter.QualityOfServiceLevel));
+            //        result.ResponsePacket.ReasonCodes.Add(ConvertToSubscribeReasonCode(finalTopicFilter.QualityOfServiceLevel));
+            //    }
 
-                if (interceptorContext.CloseConnection)
-                {
-                    result.CloseConnection = true;
-                }
+            //    if (interceptorContext.CloseConnection)
+            //    {
+            //        result.CloseConnection = true;
+            //    }
 
-                if (interceptorContext.AcceptSubscription && !string.IsNullOrEmpty(finalTopicFilter?.Topic))
-                {
-                    lock (_subscriptions)
-                    {
-                        _subscriptions[finalTopicFilter.Topic] = finalTopicFilter;
-                    }
+            //    if (interceptorContext.AcceptSubscription && !string.IsNullOrEmpty(finalTopicFilter?.Topic))
+            //    {
+            //        lock (_subscriptions)
+            //        {
+            //            _subscriptions[finalTopicFilter.Topic] = finalTopicFilter;
+            //        }
 
-                    await _eventDispatcher.HandleClientSubscribedTopicAsync(_clientSession.ClientId, finalTopicFilter).ConfigureAwait(false);
-                }
-            }
+            //        await _eventDispatcher.HandleClientSubscribedTopicAsync(_clientSession.ClientId, finalTopicFilter).ConfigureAwait(false);
+            //    }
+            //}
 
             return result;
         }
@@ -86,15 +86,15 @@ namespace MQTTnet.Server
                    continue;
                 }
 
-                if (interceptorContext.AcceptSubscription)
-                {
-                    lock (_subscriptions)
-                    {
-                        _subscriptions[topicFilter.Topic] = topicFilter;
-                    }
+                //if (interceptorContext.AcceptSubscription)
+                //{
+                //    lock (_subscriptions)
+                //    {
+                //        _subscriptions[topicFilter.Topic] = topicFilter;
+                //    }
 
-                    await _eventDispatcher.HandleClientSubscribedTopicAsync(_clientSession.ClientId, topicFilter).ConfigureAwait(false);
-                }
+                //    await _eventDispatcher.HandleClientSubscribedTopicAsync(_clientSession.ClientId, topicFilter).ConfigureAwait(false);
+                //}
             }
         }
 
@@ -164,7 +164,7 @@ namespace MQTTnet.Server
             {
                 foreach (var subscription in _subscriptions)
                 {
-                    if (!MqttTopicFilterComparer.IsMatch(topic, subscription.Key))
+                    //if (!MqttTopicFilterComparer.IsMatch(topic, subscription.Key))
                     {
                         continue;
                     }

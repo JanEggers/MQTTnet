@@ -4,6 +4,12 @@ using System.Threading.Tasks;
 using MQTTnet.Packets;
 using System;
 using Bedrock.Framework.Protocols;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Reactive.Linq;
+using System.Reactive.Threading;
+using MQTTnet.Server;
+using System.Reactive.Concurrency;
 
 namespace MQTTnet.AspNetCore
 {
@@ -31,30 +37,42 @@ namespace MQTTnet.AspNetCore
             var reader = connection.CreateMqttReader(protocolVersion);
             var writer = connection.CreateMqttWriter(protocolVersion);
 
-            while (!ct.IsCancellationRequested)
-            {
-                try
-                {
-                    var packet = await reader.ReadAsync(ct);
+            var subscriptions = ImmutableList<TopicFilter>.Empty;
 
-                    switch (packet)
-                    {
-                        case MqttConnectPacket connect:
-                            await writer.WriteAsync(new MqttConnAckPacket()
-                            {
-                                ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
-                            });
-                            break;
-                        case MqttPublishPacket pub:
-                            Server.Packets.OnNext(pub);
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                catch (OperationCanceledException)
+            using (Server.Packets
+                .ObserveOn(Scheduler.Default)
+                .Where(p => subscriptions.Find(f => MqttTopicFilterComparer.IsMatch(p.Topic, f.Topic)) != null)
+                .Do(p => writer.WriteAsync(p))
+                .Subscribe())
+            {
+                while (!ct.IsCancellationRequested)
                 {
-                    return;
+                    try
+                    {
+                        var packet = await reader.ReadAsync(ct);
+
+                        switch (packet)
+                        {
+                            case MqttConnectPacket connect:
+                                await writer.WriteAsync(new MqttConnAckPacket()
+                                {
+                                    ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
+                                });
+                                break;
+                            case MqttPublishPacket pub:
+                                Server.Packets.OnNext(pub);
+                                break;
+                            case MqttSubscribePacket sub:
+                                subscriptions = subscriptions.AddRange(sub.TopicFilters);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
                 }
             }
         }

@@ -26,6 +26,7 @@ namespace MQTTnet.Benchmarks
     {
         private IWebHost _host;
         private ProtocolWriter<MqttBasePacket> _writer;
+        private ProtocolReader<MqttBasePacket> _reader;
         private AspNetMqttServer _mqttServer;
         private MqttPublishPacket _message;
 
@@ -60,8 +61,17 @@ namespace MQTTnet.Benchmarks
             var connection = client.ConnectAsync(endpoint).GetAwaiter().GetResult();
 
             _writer = connection.CreateMqttWriter(Formatter.MqttProtocolVersion.V311);
+            _reader = connection.CreateMqttReader(Formatter.MqttProtocolVersion.V311);
             _writer.WriteAsync(new MqttConnectPacket() { 
                 ClientId = "client"                
+            }).GetAwaiter().GetResult();
+            _writer.WriteAsync(new MqttSubscribePacket()
+            {
+                PacketIdentifier = 1,
+                TopicFilters = new System.Collections.Generic.List<TopicFilter>()
+                {
+                    new TopicFilter() { QualityOfServiceLevel = Protocol.MqttQualityOfServiceLevel.AtMostOnce, Topic = Encoding.UTF8.GetBytes("A") }
+                }
             }).GetAwaiter().GetResult();
 
             _message = new MqttPublishPacket() 
@@ -98,6 +108,7 @@ namespace MQTTnet.Benchmarks
                 await _writer.WriteAsync(_message);
             }
 
+
             try
             {
                 await wait;
@@ -106,6 +117,11 @@ namespace MQTTnet.Benchmarks
             {
 
                 throw;
+            }
+
+            for (int i = 0; i < 10000; i++)
+            {
+                var packet = await _reader.ReadAsync();
             }
         }
     }

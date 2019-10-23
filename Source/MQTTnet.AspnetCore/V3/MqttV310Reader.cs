@@ -136,7 +136,7 @@ namespace MQTTnet.AspNetCore.V3
             {
                 var topicFilter = new TopicFilter
                 {
-                    Topic = body.ReadStringWithLengthPrefix(),
+                    Topic = body.ReadWithLengthPrefix(),
                     QualityOfServiceLevel = (MqttQualityOfServiceLevel)body.ReadByte()
                 };
 

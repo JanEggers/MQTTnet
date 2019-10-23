@@ -8,11 +8,8 @@ namespace MQTTnet.Server
         private const char MultiLevelWildcard = '#';
         private const char SingleLevelWildcard = '+';
 
-        public static bool IsMatch(string topic, string filter)
+        public static bool IsMatch(byte[] topic, byte[] filter)
         {
-            if (string.IsNullOrEmpty(topic)) throw new ArgumentNullException(nameof(topic));
-            if (string.IsNullOrEmpty(filter)) throw new ArgumentNullException(nameof(filter));
-
             var sPos = 0;
             var sLen = filter.Length;
             var tPos = 0;

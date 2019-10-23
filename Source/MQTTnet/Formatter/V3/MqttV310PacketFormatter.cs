@@ -196,7 +196,7 @@ namespace MQTTnet.Formatter.V3
             {
                 var topicFilter = new TopicFilter
                 {
-                    Topic = body.ReadStringWithLengthPrefix(),
+                    //Topic = body.ReadStringWithLengthPrefix(),
                     QualityOfServiceLevel = (MqttQualityOfServiceLevel)body.ReadByte()
                 };
 

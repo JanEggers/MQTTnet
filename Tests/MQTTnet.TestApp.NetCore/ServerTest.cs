@@ -39,7 +39,7 @@ namespace MQTTnet.TestApp.NetCore
 
                     ApplicationMessageInterceptor = new MqttServerApplicationMessageInterceptorDelegate(context =>
                     {
-                        if (MqttTopicFilterComparer.IsMatch(context.ApplicationMessage.Topic, "/myTopic/WithTimestamp/#"))
+                        //if (MqttTopicFilterComparer.IsMatch(context.ApplicationMessage.Topic, "/myTopic/WithTimestamp/#"))
                         {
                             // Replace the payload with the timestamp. But also extending a JSON 
                             // based payload with the timestamp is a suitable use case.
@@ -55,16 +55,16 @@ namespace MQTTnet.TestApp.NetCore
 
                     SubscriptionInterceptor = new MqttServerSubscriptionInterceptorDelegate(context =>
                     {
-                        if (context.TopicFilter.Topic.StartsWith("admin/foo/bar") && context.ClientId != "theAdmin")
-                        {
-                            context.AcceptSubscription = false;
-                        }
+                        //if (context.TopicFilter.Topic.StartsWith("admin/foo/bar") && context.ClientId != "theAdmin")
+                        //{
+                        //    context.AcceptSubscription = false;
+                        //}
 
-                        if (context.TopicFilter.Topic.StartsWith("the/secret/stuff") && context.ClientId != "Imperator")
-                        {
-                            context.AcceptSubscription = false;
-                            context.CloseConnection = true;
-                        }
+                        //if (context.TopicFilter.Topic.StartsWith("the/secret/stuff") && context.ClientId != "Imperator")
+                        //{
+                        //    context.AcceptSubscription = false;
+                        //    context.CloseConnection = true;
+                        //}
                     })
                 };
 

@@ -40,7 +40,7 @@ namespace MQTTnet.Client.Subscribing
         {
             return WithTopicFilter(new TopicFilter
             {
-                Topic = topic,
+                //Topic = topic,
                 QualityOfServiceLevel = qualityOfServiceLevel,
                 NoLocal = noLocal,
                 RetainAsPublished = retainAsPublished,
