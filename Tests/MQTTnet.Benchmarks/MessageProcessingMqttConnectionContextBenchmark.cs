@@ -18,6 +18,7 @@ using System.Linq;
 using Bedrock.Framework.Protocols;
 using System.Threading;
 using System;
+using System.Collections.Generic;
 
 namespace MQTTnet.Benchmarks
 {
@@ -78,6 +79,9 @@ namespace MQTTnet.Benchmarks
             {
                 Topic = Encoding.UTF8.GetBytes("A"),
             };
+
+
+            var connack = (MqttConnAckPacket)_reader.ReadAsync().GetAwaiter().GetResult();
         }
 
         [GlobalCleanup]
@@ -107,6 +111,7 @@ namespace MQTTnet.Benchmarks
             {
                 await _writer.WriteAsync(_message);
             }
+            await _writer.WriteAsync(new MqttPingReqPacket());
 
 
             try
@@ -119,10 +124,15 @@ namespace MQTTnet.Benchmarks
                 throw;
             }
 
+
+            List<MqttPublishPacket> publishes = new List<MqttPublishPacket>(10000);
+
             for (int i = 0; i < 10000; i++)
             {
-                var packet = await _reader.ReadAsync();
+                publishes.Add((MqttPublishPacket) await _reader.ReadAsync());
             }
+
+            var pingResponse =(MqttPingRespPacket)await _reader.ReadAsync();
         }
     }
 }
