@@ -1,23 +1,11 @@
-﻿using Bedrock.Framework.Protocols;
-using MQTTnet.Adapter;
-using MQTTnet.Exceptions;
-using MQTTnet.Formatter;
-using MQTTnet.Packets;
+﻿using MQTTnet.Exceptions;
 using System;
 using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttProtocolReader : IProtocolReader<MqttBasePacket>
+    public static class MqttProtocolReader
     {
-        private readonly MqttPacketFormatterAdapter _packetFormatterAdapter;
-        private readonly SpanBasedMqttPacketBodyReader _reader = new SpanBasedMqttPacketBodyReader();
-
-        public MqttProtocolReader(MqttPacketFormatterAdapter packetFormatterAdapter)
-        {
-            _packetFormatterAdapter = packetFormatterAdapter;
-        }
-
         public static bool TryReadMessage(in ReadOnlySequence<byte> input, out byte header, out ReadOnlyMemory<byte> body, out SequencePosition consumed) 
         {
             header = default;
@@ -46,30 +34,6 @@ namespace MQTTnet.AspNetCore
             consumed = bodySlice.End;
             return true;
         }
-
-        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
-        {
-            message = null;
-            examined = input.End;
-            if (!TryReadMessage(input, out var fixedheader, out var body, out consumed))
-            {
-                return false;
-            }
-            
-            _reader.SetBuffer(body);
-
-            var receivedMqttPacket = new ReceivedMqttPacket(fixedheader, _reader, body.Length + 2);
-
-            if (_packetFormatterAdapter.ProtocolVersion == MqttProtocolVersion.Unknown)
-            {
-                _packetFormatterAdapter.DetectProtocolVersion(receivedMqttPacket);
-            }
-
-            message = _packetFormatterAdapter.Decode(receivedMqttPacket);
-            examined = consumed;
-            return true;
-        }
-
 
         private static ReadOnlyMemory<byte> GetMemory(in ReadOnlySequence<byte> input)
         {

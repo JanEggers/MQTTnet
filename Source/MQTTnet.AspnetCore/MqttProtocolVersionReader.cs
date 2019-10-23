@@ -13,15 +13,14 @@ namespace MQTTnet.AspNetCore
             consumed = input.Start;
             examined = input.Start;
             version = MqttProtocolVersion.V310;
-            if (!MqttProtocolReader.TryReadMessage(input, out var fixedheader, out var body, out _))
+            if (!MqttProtocolReader.TryReadMessage(input, out _, out var body, out _))
             {
                 return false;
             }
 
-            var reader = new SpanBasedMqttPacketBodyReader();
-            reader.SetBuffer(body);
-            var protocolName = reader.ReadStringWithLengthPrefix();
-            var protocolLevel = reader.ReadByte();
+            var buffer = body.Span;
+            var protocolName = buffer.ReadStringWithLengthPrefix();
+            var protocolLevel = buffer.ReadByte();
 
             switch ((protocolName, protocolLevel))
             {

@@ -32,6 +32,11 @@ namespace MQTTnet.Formatter
             return (byte)fixedHeader;
         }
 
+        public static int GetLengthOfVariableInteger(int value)
+        {
+            return GetLengthOfVariableInteger((uint)value);
+        }
+
         public static int GetLengthOfVariableInteger(uint value)
         {
             var result = 0;

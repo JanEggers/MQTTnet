@@ -19,7 +19,6 @@ namespace MQTTnet.TestApp.AspNetCore2
                 .WithoutDefaultEndpoint()
                 .Build();
             services
-                .AddHostedMqttServer(mqttServerOptions)
                 .AddMqttServer()
                 .AddConnections();
         }

@@ -16,6 +16,8 @@ using System.Reactive.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using Bedrock.Framework.Protocols;
+using System.Threading;
+using System;
 
 namespace MQTTnet.Benchmarks
 {
@@ -34,8 +36,7 @@ namespace MQTTnet.Benchmarks
                    .UseKestrel(o => o.ListenAnyIP(1883, l => l.UseMqtt()))
                    .ConfigureServices(services => {
                        services
-                           .AddMqttServer()
-                           .AddConnections();
+                           .AddMqttServer();
                    })
                    .ConfigureLogging(logging => {
                        foreach (var item in logging.Services.Where(s => s.ServiceType == typeof(ILoggerProvider)).ToList())
@@ -58,7 +59,7 @@ namespace MQTTnet.Benchmarks
             var endpoint = new DnsEndPoint("localhost", 1883);
             var connection = client.ConnectAsync(endpoint).GetAwaiter().GetResult();
 
-            _writer = connection.WriteMqtt(Formatter.MqttProtocolVersion.V311);
+            _writer = connection.CreateMqttWriter(Formatter.MqttProtocolVersion.V311);
             _writer.WriteAsync(new MqttConnectPacket() { 
                 ClientId = "client"                
             }).GetAwaiter().GetResult();
@@ -81,17 +82,31 @@ namespace MQTTnet.Benchmarks
         [Benchmark]
         public async ValueTask Send_10000_Messages()
         {
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            var j = 0;
+
             var wait = _mqttServer.Packets
                    .Take(10000)
-                   .ToTask();
+                   .Do(x => j++)
+                   .ToTask(cts.Token);
 
 
             for (var i = 0; i < 10000; i++)
             {
                 await _writer.WriteAsync(_message);
             }
-            
-            await wait;
+
+            try
+            {
+                await wait;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
     }
 }
