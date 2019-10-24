@@ -82,6 +82,7 @@ namespace MQTTnet.Benchmarks
 
 
             var connack = (MqttConnAckPacket)_reader.ReadAsync().GetAwaiter().GetResult();
+            var suback = (MqttSubAckPacket)_reader.ReadAsync().GetAwaiter().GetResult();
         }
 
         [GlobalCleanup]

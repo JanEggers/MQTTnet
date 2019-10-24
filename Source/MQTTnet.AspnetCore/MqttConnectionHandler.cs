@@ -64,6 +64,9 @@ namespace MQTTnet.AspNetCore
                                 break;
                             case MqttSubscribePacket sub:
                                 subscriptions = subscriptions.AddRange(sub.TopicFilters);
+                                await writer.WriteAsync(new MqttSubAckPacket() {
+                                    PacketIdentifier = sub.PacketIdentifier
+                                });
                                 break;
                             case MqttPingReqPacket ping:
                                 await writer.WriteAsync(new MqttPingRespPacket());
