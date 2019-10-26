@@ -5,9 +5,9 @@ namespace MQTTnet.AspNetCore
 {
     public class MqttBufferWriter : IBufferWriter<byte>
     {        
-        private readonly MemoryPool<byte> _memoryPool;
+        private readonly ArrayPool<byte> _arrayPool;
 
-        private IMemoryOwner<byte> _owner;
+        private byte[] _rented;
         private Memory<byte> _total;
         private Memory<byte> _remaining;
         private Memory<byte> _written;
@@ -16,7 +16,7 @@ namespace MQTTnet.AspNetCore
 
         public MqttBufferWriter()
         {
-            _memoryPool = MemoryPool<byte>.Shared;
+            _arrayPool = ArrayPool<byte>.Create();
             _total = _remaining = _written = Memory<byte>.Empty;
         }
 
@@ -44,7 +44,15 @@ namespace MQTTnet.AspNetCore
 
         public void Reset()
         {
-            _owner.Dispose();
+            if (_rented.Length <= 1024)
+            {
+                _remaining = _total;
+                _written = Memory<byte>.Empty;
+                return;
+            }
+
+            _arrayPool.Return(_rented);
+            _rented = null;
             _total = _remaining = _written = Memory<byte>.Empty;
         }
 
@@ -55,12 +63,20 @@ namespace MQTTnet.AspNetCore
                 return;
             }
 
+            if (_total.Length == 0 && sizeHint < 1024)
+            {
+                sizeHint = 1024;
+            }
+
             var newTotal = _total.Length + sizeHint - _remaining.Length;
-            var newOwner = _memoryPool.Rent(newTotal);
-            _written.CopyTo(newOwner.Memory);
-            _owner?.Dispose();
-            _owner = newOwner;
-            _total = newOwner.Memory;
+            var newBuffer = _arrayPool.Rent(newTotal);
+            _written.CopyTo(newBuffer);
+            if (_rented != null)
+            {
+                _arrayPool.Return(_rented);
+            }
+            _rented = newBuffer;
+            _total = newBuffer.AsMemory();
             _remaining = _total.Slice(_written.Length);
             _written = _total.Slice(0, _written.Length);
         }

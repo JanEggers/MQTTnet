@@ -100,11 +100,8 @@ namespace MQTTnet.Benchmarks
             var cts = new CancellationTokenSource();
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var j = 0;
-
             var wait = _mqttServer.Packets
                    .Take(10000)
-                   .Do(x => j++)
                    .ToTask(cts.Token);
 
 
@@ -125,15 +122,14 @@ namespace MQTTnet.Benchmarks
                 throw;
             }
 
+            var count = 10000 // publish
+                      + 1 // ping
+                      ;
 
-            List<MqttPublishPacket> publishes = new List<MqttPublishPacket>(10000);
-
-            for (int i = 0; i < 10000; i++)
+            for (int i = 0; i < count; i++)
             {
-                publishes.Add((MqttPublishPacket) await _reader.ReadAsync());
+                await _reader.ReadAsync();
             }
-
-            var pingResponse =(MqttPingRespPacket)await _reader.ReadAsync();
         }
     }
 }
