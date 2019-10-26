@@ -27,7 +27,7 @@ namespace MQTTnet.Benchmarks
     {
         private IWebHost _host;
         private ProtocolWriter<MqttBasePacket> _writer;
-        private ProtocolReader<MqttBasePacket> _reader;
+        private ProtocolReader<MqttFrame> _reader;
         private AspNetMqttServer _mqttServer;
         private MqttPublishPacket _message;
 
@@ -61,8 +61,8 @@ namespace MQTTnet.Benchmarks
             var endpoint = new DnsEndPoint("localhost", 1883);
             var connection = client.ConnectAsync(endpoint).GetAwaiter().GetResult();
 
-            _writer = connection.CreateMqttWriter(Formatter.MqttProtocolVersion.V311);
-            _reader = connection.CreateMqttReader(Formatter.MqttProtocolVersion.V311);
+            _writer = connection.CreateMqttPacketWriter(Formatter.MqttProtocolVersion.V311);
+            _reader = connection.CreateMqttFrameReader();
             _writer.WriteAsync(new MqttConnectPacket() { 
                 ClientId = "client"                
             }).GetAwaiter().GetResult();
@@ -81,8 +81,8 @@ namespace MQTTnet.Benchmarks
             };
 
 
-            var connack = (MqttConnAckPacket)_reader.ReadAsync().GetAwaiter().GetResult();
-            var suback = (MqttSubAckPacket)_reader.ReadAsync().GetAwaiter().GetResult();
+            var connack = _reader.ReadAsync().GetAwaiter().GetResult(); // MqttConnAckPacket
+            var suback = _reader.ReadAsync().GetAwaiter().GetResult(); // MqttSubAckPacket
         }
 
         [GlobalCleanup]

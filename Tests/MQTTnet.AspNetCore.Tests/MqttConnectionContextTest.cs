@@ -20,7 +20,7 @@ namespace MQTTnet.AspNetCore.Tests
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = connection.CreateMqttReader(MqttProtocolVersion.V311);
+            var ctx = connection.CreateMqttPacketReader(MqttProtocolVersion.V311);
 
             pipe.Receive.Writer.Complete();
 
@@ -33,7 +33,7 @@ namespace MQTTnet.AspNetCore.Tests
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = connection.CreateMqttWriter(MqttProtocolVersion.V311);
+            var ctx = connection.CreateMqttPacketWriter(MqttProtocolVersion.V311);
 
             var tasks = Enumerable.Range(1, 10).Select(_ => Task.Run(async () => 
             {
@@ -53,7 +53,7 @@ namespace MQTTnet.AspNetCore.Tests
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = connection.CreateMqttWriter(MqttProtocolVersion.V311);
+            var ctx = connection.CreateMqttPacketWriter(MqttProtocolVersion.V311);
 
             await ctx.WriteAsync(new MqttPublishPacket() { Payload = new byte[20_000] }, CancellationToken.None).ConfigureAwait(false);
 

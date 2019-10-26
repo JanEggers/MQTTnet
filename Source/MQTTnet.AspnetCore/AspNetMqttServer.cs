@@ -5,6 +5,6 @@ namespace MQTTnet.AspNetCore
 {
     public class AspNetMqttServer 
     {
-        public Subject<MqttPublishPacket> Packets { get; } = new Subject<MqttPublishPacket>();
+        public Subject<MqttFrame> Packets { get; } = new Subject<MqttFrame>();
     }
 }

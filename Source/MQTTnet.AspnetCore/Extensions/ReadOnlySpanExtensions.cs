@@ -7,6 +7,13 @@ namespace MQTTnet.AspNetCore
 {
     public static class ReadOnlySpanExtensions
     {
+        public static ReadOnlySpan<byte> Read(this ref ReadOnlySpan<byte> buffer, int count)
+        {
+            var result = buffer.Slice(0, count);
+            buffer = buffer.Slice(count);
+            return result;
+        }
+
         public static byte ReadByte(this ref ReadOnlySpan<byte> buffer)
         {
             var result = buffer[0];
@@ -24,7 +31,7 @@ namespace MQTTnet.AspNetCore
             return buffer.ReadSegmentWithLengthPrefix().ToArray();
         }
 
-        private static ReadOnlySpan<byte> ReadSegmentWithLengthPrefix(this ref ReadOnlySpan<byte> buffer)
+        public static ReadOnlySpan<byte> ReadSegmentWithLengthPrefix(this ref ReadOnlySpan<byte> buffer)
         {
             var length = BinaryPrimitives.ReadUInt16BigEndian(buffer);
 

@@ -1,16 +1,17 @@
-﻿using MQTTnet.Exceptions;
+﻿using Bedrock.Framework.Protocols;
+using MQTTnet.Exceptions;
 using System;
 using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public static class MqttProtocolReader
+    public class MqttFrameReader : IProtocolReader<MqttFrame>
     {
-        public static bool TryReadMessage(in ReadOnlySequence<byte> input, out byte header, out ReadOnlyMemory<byte> body, out SequencePosition consumed) 
+        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttFrame message)
         {
-            header = default;
-            body = default;
+            message = default;
             consumed = input.Start;
+            examined = input.End;
 
             if (input.Length < 2)
             {
@@ -28,10 +29,10 @@ namespace MQTTnet.AspNetCore
                 return false;
             }
 
-            header = input.First.Span[0];
             var bodySlice = copy.Slice(0, bodyLength);
-            body = GetMemory(bodySlice);
+            message = new MqttFrame(input.First.Span[0], GetMemory(bodySlice).ToArray());
             consumed = bodySlice.End;
+            examined = bodySlice.End;
             return true;
         }
 

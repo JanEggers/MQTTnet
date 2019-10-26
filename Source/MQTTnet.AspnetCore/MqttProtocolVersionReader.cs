@@ -8,17 +8,19 @@ namespace MQTTnet.AspNetCore
 {
     public class MqttProtocolVersionReader : IProtocolReader<MqttProtocolVersion>
     {
+        private readonly MqttFrameReader _frameReader = new MqttFrameReader();
+
         public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttProtocolVersion version)
         {
             consumed = input.Start;
             examined = input.Start;
             version = MqttProtocolVersion.V310;
-            if (!MqttProtocolReader.TryReadMessage(input, out _, out var body, out _))
+            if (!_frameReader.TryParseMessage(input, out _, out _, out var frame))
             {
                 return false;
             }
 
-            var buffer = body.Span;
+            ReadOnlySpan<byte> buffer = frame.Body;
             var protocolName = buffer.ReadStringWithLengthPrefix();
             var protocolLevel = buffer.ReadByte();
 

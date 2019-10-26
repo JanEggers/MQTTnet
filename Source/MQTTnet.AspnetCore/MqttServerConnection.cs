@@ -9,6 +9,9 @@ using MQTTnet.Server;
 using System.Reactive.Concurrency;
 using System.Reactive.Subjects;
 using MQTTnet.Formatter;
+using MQTTnet.Protocol;
+using MQTTnet.AspNetCore.V3;
+using System.Threading;
 
 namespace MQTTnet.AspNetCore
 {
@@ -17,9 +20,11 @@ namespace MQTTnet.AspNetCore
         private readonly ConnectionContext _connection;
         private readonly AspNetMqttServer _server;
         private readonly MqttProtocolVersion _protocolVersion;
-        private readonly Subject<MqttBasePacket> _outputBuffer;
-        private readonly ProtocolReader<MqttBasePacket> _reader;
-        private readonly ProtocolWriter<MqttBasePacket> _writer;
+        private readonly Subject<MqttBasePacket> _buffer;
+        private readonly ProtocolReader<MqttFrame> _frameReader;
+        private readonly ProtocolWriter<MqttBasePacket> _packetWriter;
+        private readonly ProtocolWriter<MqttFrame> _frameWriter;
+        private readonly MqttV310Reader _reader;
 
         private ImmutableList<TopicFilter> _subscriptions;
 
@@ -29,32 +34,37 @@ namespace MQTTnet.AspNetCore
             _server = server;
             _protocolVersion = protocolVersion;
             _subscriptions = ImmutableList<TopicFilter>.Empty;
-            _outputBuffer = new Subject<MqttBasePacket>();
-            _reader = _connection.CreateMqttReader(_protocolVersion);
-            _writer = _connection.CreateMqttWriter(_protocolVersion);
+            _buffer = new Subject<MqttBasePacket>();
+            _frameReader = _connection.CreateMqttFrameReader();
+            _reader = _protocolVersion.CreateReader();
+
+            var semaphore = new SemaphoreSlim(1);
+
+            _packetWriter = _connection.CreateMqttPacketWriter(_protocolVersion, semaphore);
+            _frameWriter = _connection.CreateMqttFrameWriter(semaphore);
         }
 
 
         public async ValueTask Run()
         {
             var ct = _connection.ConnectionClosed;
-            var reader = _reader;
+            var reader = _frameReader;
 
-            using (_outputBuffer
+            using (_buffer
                 .Do(WritePacket)
                 .Subscribe())
             using (_server.Packets
                 .ObserveOn(Scheduler.Default)
                 .Where(PacketFilter)
-                .Do(_outputBuffer.OnNext)
+                .Do(WriteFrame)
                 .Subscribe())
             {
                 while (!ct.IsCancellationRequested)
                 {
                     try
                     {
-                        var packet = await reader.ReadAsync(ct);
-                        HandlePacket(packet);
+                        var frame = await reader.ReadAsync(ct);
+                        HandleFrame(frame);
                     }
                     catch (OperationCanceledException)
                     {
@@ -66,41 +76,47 @@ namespace MQTTnet.AspNetCore
 
         private void WritePacket(MqttBasePacket packet) 
         {
-            _writer.WriteAsync(packet).GetAwaiter().GetResult();
+            _packetWriter.WriteAsync(packet).GetAwaiter().GetResult();
+        }
+               
+        private void WriteFrame(MqttFrame frame)
+        {
+            _frameWriter.WriteAsync(frame).GetAwaiter().GetResult();
         }
 
-        private void HandlePacket(MqttBasePacket packet)
+        private void HandleFrame(MqttFrame frame)
         {
-            var outputBuffer = _outputBuffer;
-            switch (packet)
+            switch (frame.PacketType)
             {
-                case MqttConnectPacket connect:
-                    outputBuffer.OnNext(new MqttConnAckPacket()
+                case MqttControlPacketType.Connect:
+                    _buffer.OnNext(new MqttConnAckPacket()
                     {
                         ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
                     });
                     break;
-                case MqttPublishPacket pub:
-                    _server.Packets.OnNext(pub);
+                case MqttControlPacketType.Publish:
+                    _server.Packets.OnNext(frame);
                     break;
-                case MqttSubscribePacket sub:
+                case MqttControlPacketType.Subscribe:
+                    var sub = _reader.DecodeSubscribePacket(frame.Body);
                     _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
-                    outputBuffer.OnNext(new MqttSubAckPacket()
+                    _buffer.OnNext(new MqttSubAckPacket()
                     {
                         PacketIdentifier = sub.PacketIdentifier
                     });
                     break;
-                case MqttPingReqPacket _:
-                    outputBuffer.OnNext(new MqttPingRespPacket());
+                case MqttControlPacketType.PingReq:
+                    _buffer.OnNext(new MqttPingRespPacket());
                     break;
                 default:
                     break;
             }
         }
 
-        private bool PacketFilter(MqttPublishPacket p)
+        private bool PacketFilter(MqttFrame frame)
         {
             //dont _subscriptions.Find it allocates delegate
+            var p = new MqttV3PublishPacket(frame);
 
             foreach (var f in _subscriptions)
             {

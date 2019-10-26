@@ -12,35 +12,31 @@ namespace MQTTnet.AspNetCore.V3
         private static readonly MqttPingReqPacket PingReqPacket = new MqttPingReqPacket();
         private static readonly MqttPingRespPacket PingRespPacket = new MqttPingRespPacket();
         private static readonly MqttDisconnectPacket DisconnectPacket = new MqttDisconnectPacket();
-          
+        private readonly MqttFrameReader _frameReader = new MqttFrameReader();
+
 
         public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
         {
             message = null;
-            examined = input.End;
-            if (!MqttProtocolReader.TryReadMessage(input, out var fixedheader, out var body, out consumed))
+            if (!_frameReader.TryParseMessage(input, out consumed, out examined, out var frame))
             {
                 return false;
             }
-            message = Decode(fixedheader, body.Span);
+            message = Decode(frame);
             examined = consumed;
             return true;
         }
 
-        private MqttBasePacket Decode(byte fixedheader, ReadOnlySpan<byte> body)
+        public MqttBasePacket Decode(in MqttFrame frame)
         {
-            var controlPacketType = fixedheader >> 4;
-            if (controlPacketType < 1 || controlPacketType > 14)
-            {
-                throw new MqttProtocolViolationException($"The packet type is invalid ({controlPacketType}).");
-            }
+            ReadOnlySpan<byte> body = frame.Body;
 
-            switch ((MqttControlPacketType)controlPacketType)
+            switch (frame.PacketType)
             {
                 case MqttControlPacketType.Connect: return DecodeConnectPacket(body);
                 case MqttControlPacketType.ConnAck: return DecodeConnAckPacket(body);
                 case MqttControlPacketType.Disconnect: return DisconnectPacket;
-                case MqttControlPacketType.Publish: return DecodePublishPacket(fixedheader, body);
+                case MqttControlPacketType.Publish: return DecodePublishPacket(frame.Header, body);
                 case MqttControlPacketType.PubAck: return DecodePubAckPacket(body);
                 case MqttControlPacketType.PubRec: return DecodePubRecPacket(body);
                 case MqttControlPacketType.PubRel: return DecodePubRelPacket(body);
@@ -52,7 +48,7 @@ namespace MQTTnet.AspNetCore.V3
                 case MqttControlPacketType.Unsubscibe: return DecodeUnsubscribePacket(body);
                 case MqttControlPacketType.UnsubAck: return DecodeUnsubAckPacket(body);
 
-                default: throw new MqttProtocolViolationException($"Packet type ({controlPacketType}) not supported.");
+                default: throw new MqttProtocolViolationException($"Packet type ({frame.PacketType}) not supported.");
             }
         }
 
@@ -123,7 +119,7 @@ namespace MQTTnet.AspNetCore.V3
             return packet;
         }
 
-        private static MqttBasePacket DecodeSubscribePacket(ReadOnlySpan<byte> body)
+        public MqttSubscribePacket DecodeSubscribePacket(ReadOnlySpan<byte> body)
         {
             ThrowIfBodyIsEmpty(body);
 
@@ -146,7 +142,7 @@ namespace MQTTnet.AspNetCore.V3
             return packet;
         }
 
-        private static MqttBasePacket DecodePublishPacket(byte fixedHeader, ReadOnlySpan<byte> body)
+        private static MqttPublishPacket DecodePublishPacket(byte fixedHeader, ReadOnlySpan<byte> body)
         {
             ThrowIfBodyIsEmpty(body);
 
