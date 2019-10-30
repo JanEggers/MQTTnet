@@ -118,9 +118,9 @@ namespace MQTTnet.AspNetCore
             //dont _subscriptions.Find it allocates delegate
             var p = new MqttV3PublishPacket(frame);
 
-            foreach (var f in _subscriptions)
+            for (int i = 0; i < _subscriptions.Count; i++)
             {
-                if (MqttTopicFilterComparer.IsMatch(p.Topic, f.Topic))
+                if (MqttTopicFilterComparer.IsMatch(p.Topic, _subscriptions[i].Topic))
                 {
                     return true;
                 }
