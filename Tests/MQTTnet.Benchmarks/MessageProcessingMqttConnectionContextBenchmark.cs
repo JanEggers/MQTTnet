@@ -97,30 +97,12 @@ namespace MQTTnet.Benchmarks
         [Benchmark]
         public async ValueTask Send_10000_Messages()
         {
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            await Task.WhenAll(Write(), Read());
+        }
 
-            var wait = _mqttServer.Packets
-                   .Take(10000)
-                   .ToTask(cts.Token);
-
-
-            for (var i = 0; i < 10000; i++)
-            {
-                await _writer.WriteAsync(_message);
-            }
-            await _writer.WriteAsync(new MqttPingReqPacket());
-
-
-            try
-            {
-                await wait;
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
+        private async Task Read()
+        {
+            await Task.Yield();
 
             var count = 10000 // publish
                       + 1 // ping
@@ -130,6 +112,16 @@ namespace MQTTnet.Benchmarks
             {
                 await _reader.ReadAsync();
             }
+        }
+
+        private async Task Write()
+        {
+            await Task.Yield();
+            for (var i = 0; i < 10000; i++)
+            {
+                await _writer.WriteAsync(_message);
+            }
+            await _writer.WriteAsync(new MqttPingReqPacket());
         }
     }
 }
