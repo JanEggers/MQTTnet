@@ -19,9 +19,12 @@ using Bedrock.Framework.Protocols;
 using System.Threading;
 using System;
 using System.Collections.Generic;
+using BenchmarkDotNet.Diagnostics.Windows.Configs;
 
 namespace MQTTnet.Benchmarks
 {
+    //[ConcurrencyVisualizerProfiler]
+    [ThreadingDiagnoser]
     [MemoryDiagnoser]
     public class MessageProcessingMqttConnectionContextBenchmark
     {
@@ -95,9 +98,9 @@ namespace MQTTnet.Benchmarks
         }
 
         [Benchmark]
-        public async ValueTask Send_10000_Messages()
+        public void Send_10000_Messages()
         {
-            await Task.WhenAll(Write(), Read());
+            Task.WhenAll(Write(), Read()).GetAwaiter().GetResult();
         }
 
         private async Task Read()

@@ -1,6 +1,7 @@
 ﻿using System;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnostics.Windows;
 using BenchmarkDotNet.Running;
-using MQTTnet.Benchmarks.Configurations;
 using MQTTnet.Diagnostics;
 
 namespace MQTTnet.Benchmarks
@@ -40,7 +41,9 @@ namespace MQTTnet.Benchmarks
             //        BenchmarkRunner.Run<MqttTcpChannelBenchmark>();
             //        break;
             //    case '7':
-                    BenchmarkRunner.Run<MessageProcessingMqttConnectionContextBenchmark>(new AllowNonOptimized());
+                    BenchmarkRunner.Run<MessageProcessingMqttConnectionContextBenchmark>(DefaultConfig.Instance
+                        .With(new ConcurrencyVisualizerProfiler())
+                        );
             //        break;
             //}
 
