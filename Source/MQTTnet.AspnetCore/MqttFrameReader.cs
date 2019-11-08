@@ -30,53 +30,62 @@ namespace MQTTnet.AspNetCore
             }
 
             var bodySlice = copy.Slice(0, bodyLength);
-            message = new MqttFrame(input.First.Span[0], GetMemory(bodySlice).ToArray());
+
+            var body = new byte[bodyLength];
+            bodySlice.CopyTo(body);
+            message = new MqttFrame(input.First.Span[0], body);
             consumed = bodySlice.End;
             examined = bodySlice.End;
             return true;
         }
-
-        private static ReadOnlyMemory<byte> GetMemory(in ReadOnlySequence<byte> input)
+        
+        public static bool TryReadBodyLength(ref ReadOnlySequence<byte> input, out int bodyLength)
         {
-            if (input.IsSingleSegment)
+            var length = Math.Min(5, (int)input.Length);
+            var temp = input.Slice(0, length);
+
+            if (temp.IsSingleSegment)
             {
-                return input.First;
+                var result = TryReadBodyLength(temp.FirstSpan, out var headerLength, out bodyLength);
+                input = input.Slice(headerLength);
+                return result;
             }
 
-            // Should be rare
-            return input.ToArray();
+            {
+                Span<byte> span = stackalloc byte[length];
+                temp.CopyTo(span);
+                var result = TryReadBodyLength(span, out var headerLength, out bodyLength);
+                input = input.Slice(headerLength);
+                return result;
+            }
         }
 
-        public static bool TryReadBodyLength(ref ReadOnlySequence<byte> input, out int bodyLength)
+        private static bool TryReadBodyLength(in ReadOnlySpan<byte> input, out int headerLength, out int bodyLength)
         {
             // Alorithm taken from https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html.
             var multiplier = 1;
             var value = 0;
-            byte encodedByte;
-            var index = 1;
+            headerLength = 1;
             bodyLength = 0;
-
-            var temp = GetMemory(input.Slice(0, Math.Min(5, input.Length)));
-
+            byte encodedByte;
             do
             {
-                if (index == temp.Length)
+                if (headerLength == input.Length)
                 {
                     return false;
                 }
-                encodedByte = temp.Span[index];
-                index++;
+                encodedByte = input[headerLength];
+                headerLength++;
 
                 value += (byte)(encodedByte & 127) * multiplier;
                 if (multiplier > 128 * 128 * 128)
                 {
-                    throw new MqttProtocolViolationException($"Remaining length is invalid (Data={string.Join(",", temp.Slice(1, index).ToArray())}).");
+                    throw new MqttProtocolViolationException($"Remaining length is invalid (Data={string.Join(",", input.Slice(1, headerLength).ToArray())}).");
                 }
 
                 multiplier *= 128;
             } while ((encodedByte & 128) != 0);
 
-            input = input.Slice(index);
             bodyLength = value;
             return true;
         }

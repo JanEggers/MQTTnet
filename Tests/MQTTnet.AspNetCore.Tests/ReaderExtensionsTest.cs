@@ -1,4 +1,5 @@
 #if NETCOREAPP
+using System;
 using System.Buffers;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -10,6 +11,29 @@ namespace MQTTnet.AspNetCore.Tests
     [TestClass]
     public class ReaderExtensionsTest
     {
+        public class TestReadOnlySequenceSegment : ReadOnlySequenceSegment<byte>
+        {
+            public TestReadOnlySequenceSegment(ReadOnlyMemory<byte> memory, long runningIndex = 0, TestReadOnlySequenceSegment next = null)
+            {
+                RunningIndex = runningIndex;
+                Memory = memory;
+                Next = next;
+            }
+        }
+
+        [TestMethod]
+        public void TestTryCombine()
+        {
+            var end = new TestReadOnlySequenceSegment(new ReadOnlyMemory<byte>(new byte[5]), runningIndex: 5);
+            var start = new TestReadOnlySequenceSegment(new ReadOnlyMemory<byte>(new byte[5]), next: end);
+
+            var sequence = new ReadOnlySequence<byte>(start, 0, end, end.Memory.Length);
+
+            Assert.AreEqual(10, sequence.Length);
+        }
+
+
+
         [TestMethod]
         public void TestTryDeserialize()
         {

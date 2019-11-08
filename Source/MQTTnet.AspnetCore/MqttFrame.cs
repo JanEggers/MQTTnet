@@ -3,7 +3,7 @@ using MQTTnet.Protocol;
 
 namespace MQTTnet.AspNetCore
 {
-    public readonly struct MqttFrame
+    public ref struct MqttFrame
     {
         public MqttFrame(byte header, byte[] body)
         {
