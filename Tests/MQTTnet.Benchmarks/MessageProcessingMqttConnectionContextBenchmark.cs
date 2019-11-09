@@ -29,10 +29,25 @@ namespace MQTTnet.Benchmarks
     public class MessageProcessingMqttConnectionContextBenchmark
     {
         private IWebHost _host;
-        private ProtocolWriter<MqttBasePacket> _writer;
-        private ProtocolReader<MqttFrame> _reader;
         private AspNetMqttServer _mqttServer;
         private MqttPublishPacket _message;
+        private MqttClientConnection _connection;
+
+        private async ValueTask InitConnection(IServiceProvider serviceProvider)
+        {
+            var factory = new MqttConnectionFactory(serviceProvider);
+
+            _connection = await factory.ConnectAsync<MqttClientConnection>(new DnsEndPoint("localhost", 1883));
+            var connack = await _connection.SendConnectAsync(new MqttConnectPacket() { ClientId = "client" });
+            await _connection.SubscribeAsync(new MqttSubscribePacket()
+            {
+                PacketIdentifier = 1,
+                TopicFilters = new System.Collections.Generic.List<TopicFilter>()
+                {
+                    new TopicFilter() { QualityOfServiceLevel = Protocol.MqttQualityOfServiceLevel.AtMostOnce, Topic = Encoding.UTF8.GetBytes("A") }
+                }
+            });
+        }
 
         [GlobalSetup]
         public void Setup()
@@ -41,7 +56,8 @@ namespace MQTTnet.Benchmarks
                    .UseKestrel(o => o.ListenAnyIP(1883, l => l.UseMqtt()))
                    .ConfigureServices(services => {
                        services
-                           .AddMqttServer();
+                           .AddMqttServer()
+                           .AddMqttClient<MqttClientConnection>();
                    })
                    .ConfigureLogging(logging => {
                        foreach (var item in logging.Services.Where(s => s.ServiceType == typeof(ILoggerProvider)).ToList())
@@ -53,45 +69,22 @@ namespace MQTTnet.Benchmarks
                    .Build();
 
 
-            var client = new ClientBuilder(_host.Services)
-                .UseSockets()
-                .Build();
-
             _mqttServer = _host.Services.GetRequiredService<AspNetMqttServer>();
 
             _host.Start();
 
-            var endpoint = new DnsEndPoint("localhost", 1883);
-            var connection = client.ConnectAsync(endpoint).GetAwaiter().GetResult();
-
-            _writer = connection.CreateMqttPacketWriter(Formatter.MqttProtocolVersion.V311);
-            _reader = connection.CreateMqttFrameReader();
-            _writer.WriteAsync(new MqttConnectPacket() { 
-                ClientId = "client"                
-            }).GetAwaiter().GetResult();
-            _writer.WriteAsync(new MqttSubscribePacket()
-            {
-                PacketIdentifier = 1,
-                TopicFilters = new System.Collections.Generic.List<TopicFilter>()
-                {
-                    new TopicFilter() { QualityOfServiceLevel = Protocol.MqttQualityOfServiceLevel.AtMostOnce, Topic = Encoding.UTF8.GetBytes("A") }
-                }
-            }).GetAwaiter().GetResult();
+            InitConnection(_host.Services).GetAwaiter().GetResult();
 
             _message = new MqttPublishPacket() 
             {
                 Topic = Encoding.UTF8.GetBytes("A"),
             };
-
-
-            var connack = _reader.ReadAsync().GetAwaiter().GetResult(); // MqttConnAckPacket
-            var suback = _reader.ReadAsync().GetAwaiter().GetResult(); // MqttSubAckPacket
         }
 
         [GlobalCleanup]
         public void Cleanup()
         {
-            _writer.Connection.DisposeAsync().GetAwaiter().GetResult();
+            _connection.DisconnectAsync().GetAwaiter().GetResult();
 
             _host.StopAsync().GetAwaiter().GetResult();
             _host.Dispose();
@@ -113,7 +106,7 @@ namespace MQTTnet.Benchmarks
 
             for (int i = 0; i < count; i++)
             {
-                await _reader.ReadAsync();
+                await _connection.Reader.ReadAsync();
             }
         }
 
@@ -127,8 +120,8 @@ namespace MQTTnet.Benchmarks
             {
                 msgs[i] = _message;
             }
-            await _writer.WriteManyAsync(msgs);
-            await _writer.WriteAsync(new MqttPingReqPacket());
+            await _connection.Writer.WriteManyAsync(msgs);
+            await _connection.Writer.WriteAsync(new MqttPingReqPacket());
         }
     }
 }

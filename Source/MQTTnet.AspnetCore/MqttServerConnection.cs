@@ -65,7 +65,33 @@ namespace MQTTnet.AspNetCore
                     try
                     {
                         var frame = await reader.ReadAsync(ct);
-                        HandleFrame(frame);
+                        switch (frame.PacketType)
+                        {
+                            case MqttControlPacketType.Connect:
+                                _buffer.OnNext(new MqttConnAckPacket()
+                                {
+                                    ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
+                                });
+                                break;
+                            case MqttControlPacketType.Publish:
+                                _server.Packets.OnNext(frame);
+                                break;
+                            case MqttControlPacketType.Subscribe:
+                                var sub = _reader.DecodeSubscribePacket(frame.Body);
+                                _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
+                                _buffer.OnNext(new MqttSubAckPacket()
+                                {
+                                    PacketIdentifier = sub.PacketIdentifier
+                                });
+                                break;
+                            case MqttControlPacketType.PingReq:
+                                _buffer.OnNext(new MqttPingRespPacket());
+                                break;
+                            case MqttControlPacketType.Disconnect:
+                                return;
+                            default:
+                                break;
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -88,35 +114,6 @@ namespace MQTTnet.AspNetCore
         private void WriteFrames(IList<MqttFrame> frames)
         {
             _frameWriter.WriteManyAsync(frames).GetAwaiter().GetResult();
-        }
-
-        private void HandleFrame(MqttFrame frame)
-        {
-            switch (frame.PacketType)
-            {
-                case MqttControlPacketType.Connect:
-                    _buffer.OnNext(new MqttConnAckPacket()
-                    {
-                        ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
-                    });
-                    break;
-                case MqttControlPacketType.Publish:
-                    _server.Packets.OnNext(frame);
-                    break;
-                case MqttControlPacketType.Subscribe:
-                    var sub = _reader.DecodeSubscribePacket(frame.Body);
-                    _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
-                    _buffer.OnNext(new MqttSubAckPacket()
-                    {
-                        PacketIdentifier = sub.PacketIdentifier
-                    });
-                    break;
-                case MqttControlPacketType.PingReq:
-                    _buffer.OnNext(new MqttPingRespPacket());
-                    break;
-                default:
-                    break;
-            }
         }
 
         private bool PacketFilter(MqttFrame frame)

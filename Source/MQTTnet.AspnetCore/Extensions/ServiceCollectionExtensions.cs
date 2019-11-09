@@ -12,5 +12,13 @@ namespace Microsoft.Extensions.DependencyInjection
 
             return services;
         }
+        public static IServiceCollection AddMqttClient<T>(this IServiceCollection services)
+            where T : class
+        {
+            services.AddConnections();
+            services.AddScoped<T>();
+
+            return services;
+        }
     }
 }
