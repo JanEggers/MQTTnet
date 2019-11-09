@@ -120,10 +120,14 @@ namespace MQTTnet.Benchmarks
         private async Task Write()
         {
             await Task.Yield();
+
+            var msgs = new MqttPublishPacket[10000];
+
             for (var i = 0; i < 10000; i++)
             {
-                await _writer.WriteAsync(_message);
+                msgs[i] = _message;
             }
+            await _writer.WriteManyAsync(msgs);
             await _writer.WriteAsync(new MqttPingReqPacket());
         }
     }

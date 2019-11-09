@@ -12,6 +12,7 @@ using MQTTnet.Formatter;
 using MQTTnet.Protocol;
 using MQTTnet.AspNetCore.V3;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace MQTTnet.AspNetCore
 {
@@ -82,6 +83,11 @@ namespace MQTTnet.AspNetCore
         private void WriteFrame(MqttFrame frame)
         {
             _frameWriter.WriteAsync(frame).GetAwaiter().GetResult();
+        }
+
+        private void WriteFrames(IList<MqttFrame> frames)
+        {
+            _frameWriter.WriteManyAsync(frames).GetAwaiter().GetResult();
         }
 
         private void HandleFrame(MqttFrame frame)
