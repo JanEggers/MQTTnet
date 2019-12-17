@@ -104,9 +104,11 @@ namespace MQTTnet.Benchmarks
                       + 1 // ping
                       ;
 
+            var reader = _connection.FrameReader;
+
             for (int i = 0; i < count; i++)
             {
-                await _connection.Reader.ReadAsync();
+                await reader.ReadAsync();
             }
         }
 
@@ -120,8 +122,8 @@ namespace MQTTnet.Benchmarks
             {
                 msgs[i] = _message;
             }
-            await _connection.Writer.WriteManyAsync(msgs);
-            await _connection.Writer.WriteAsync(new MqttPingReqPacket());
+            await _connection.MqttWriter.WriteManyAsync(msgs);
+            await _connection.MqttWriter.WriteAsync(new MqttPingReqPacket());
         }
     }
 }

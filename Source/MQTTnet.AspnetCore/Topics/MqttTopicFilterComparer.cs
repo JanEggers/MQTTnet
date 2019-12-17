@@ -1,12 +1,9 @@
 ﻿using System;
 
-namespace MQTTnet.AspNetCore
+namespace MQTTnet.AspNetCore.Topics
 {
     public static class MqttTopicFilterComparer
     {
-        private const char LevelSeparator = '/';
-        private const char MultiLevelWildcard = '#';
-        private const char SingleLevelWildcard = '+';
 
         public static bool IsMatch(ReadOnlySpan<byte> topic, ReadOnlySpan<byte> filter)
         {
@@ -23,8 +20,8 @@ namespace MQTTnet.AspNetCore
                     {
                         // Check for e.g. foo matching foo/#
                         if (sPos == sLen - 3
-                                && filter[sPos + 1] == LevelSeparator
-                                && filter[sPos + 2] == MultiLevelWildcard)
+                                && filter[sPos + 1] == TopicToken.LevelSeparator
+                                && filter[sPos + 2] == TopicToken.MultiLevelWildcard)
                         {
                             return true;
                         }
@@ -38,9 +35,9 @@ namespace MQTTnet.AspNetCore
                         return true;
                     }
 
-                    if (tPos == tLen && sPos == sLen - 1 && filter[sPos] == SingleLevelWildcard)
+                    if (tPos == tLen && sPos == sLen - 1 && filter[sPos] == TopicToken.SingleLevelWildcard)
                     {
-                        if (sPos > 0 && filter[sPos - 1] != LevelSeparator)
+                        if (sPos > 0 && filter[sPos - 1] != TopicToken.LevelSeparator)
                         {
                             // Invalid filter string
                             return false;
@@ -51,24 +48,24 @@ namespace MQTTnet.AspNetCore
                 }
                 else
                 {
-                    if (filter[sPos] == SingleLevelWildcard)
+                    if (filter[sPos] == TopicToken.SingleLevelWildcard)
                     {
                         // Check for bad "+foo" or "a/+foo" subscription
-                        if (sPos > 0 && filter[sPos - 1] != LevelSeparator)
+                        if (sPos > 0 && filter[sPos - 1] != TopicToken.LevelSeparator)
                         {
                             // Invalid filter string
                             return false;
                         }
 
                         // Check for bad "foo+" or "foo+/a" subscription
-                        if (sPos < sLen - 1 && filter[sPos + 1] != LevelSeparator)
+                        if (sPos < sLen - 1 && filter[sPos + 1] != TopicToken.LevelSeparator)
                         {
                             // Invalid filter string
                             return false;
                         }
 
                         sPos++;
-                        while (tPos < tLen && topic[tPos] != LevelSeparator)
+                        while (tPos < tLen && topic[tPos] != TopicToken.LevelSeparator)
                         {
                             tPos++;
                         }
@@ -78,9 +75,9 @@ namespace MQTTnet.AspNetCore
                             return true;
                         }
                     }
-                    else if (filter[sPos] == MultiLevelWildcard)
+                    else if (filter[sPos] == TopicToken.MultiLevelWildcard)
                     {
-                        if (sPos > 0 && filter[sPos - 1] != LevelSeparator)
+                        if (sPos > 0 && filter[sPos - 1] != TopicToken.LevelSeparator)
                         {
                             // Invalid filter string
                             return false;
@@ -100,9 +97,9 @@ namespace MQTTnet.AspNetCore
                         if (sPos > 0
                                 && sPos + 2 == sLen
                                 && tPos == tLen
-                                && filter[sPos - 1] == SingleLevelWildcard
-                                && filter[sPos] == LevelSeparator
-                                && filter[sPos + 1] == MultiLevelWildcard)
+                                && filter[sPos - 1] == TopicToken.SingleLevelWildcard
+                                && filter[sPos] == TopicToken.LevelSeparator
+                                && filter[sPos + 1] == TopicToken.MultiLevelWildcard)
                         {
                             return true;
                         }

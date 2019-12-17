@@ -18,26 +18,32 @@ namespace MQTTnet.AspNetCore
 
         private readonly ConnectionContext _connection;
         private readonly IOptions<Options> _options;
-        public ProtocolWriter<MqttBasePacket> Writer { get; }
-        public ProtocolReader<MqttFrame> Reader { get; }
+        private readonly SemaphoreSlim _semaphore;
+
+        public ProtocolWriter<MqttBasePacket> MqttWriter { get; }
+        public ProtocolWriter<MqttFrame> FrameWriter { get; }
+        public ProtocolReader<MqttFrame> FrameReader { get; }
         
         public MqttClientConnection(ConnectionContext connection, IOptions<Options> options)
         {
             _connection = connection;
             _options = options;
-            Writer = connection.CreateMqttPacketWriter(options.Value.MqttProtocolVersion);
-            Reader = connection.CreateMqttFrameReader();
+            _semaphore = new SemaphoreSlim(1);
+
+            MqttWriter = connection.CreateMqttPacketWriter(options.Value.MqttProtocolVersion, _semaphore);
+            FrameWriter = connection.CreateMqttFrameWriter(_semaphore);
+            FrameReader = connection.CreateMqttFrameReader();
         }
 
         public async ValueTask<MqttFrame> SendConnectAsync(MqttConnectPacket connectPacket, CancellationToken cancellationToken = default)
         {
-            await Writer.WriteAsync(connectPacket, cancellationToken);
-            return await Reader.ReadAsync(cancellationToken);
+            await MqttWriter.WriteAsync(connectPacket, cancellationToken);
+            return await FrameReader.ReadAsync(cancellationToken);
         }
 
         public async ValueTask SubscribeAsync(MqttSubscribePacket subscribePacket, CancellationToken cancellationToken = default)
         {
-            await Writer.WriteAsync(subscribePacket, cancellationToken);
+            await MqttWriter.WriteAsync(subscribePacket, cancellationToken);
         }
 
         public virtual async ValueTask RunConnectionAsync()
@@ -47,7 +53,7 @@ namespace MQTTnet.AspNetCore
 
         public async ValueTask DisconnectAsync(CancellationToken cancellationToken = default) 
         {
-            await Writer.WriteAsync(new MqttDisconnectPacket(), cancellationToken);
+            await MqttWriter.WriteAsync(new MqttDisconnectPacket(), cancellationToken);
             await _connection.DisposeAsync();
         }
     }

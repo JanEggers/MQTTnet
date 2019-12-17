@@ -13,6 +13,7 @@ using MQTTnet.Protocol;
 using MQTTnet.AspNetCore.V3;
 using System.Threading;
 using System.Collections.Generic;
+using MQTTnet.AspNetCore.Topics;
 
 namespace MQTTnet.AspNetCore
 {
@@ -28,6 +29,7 @@ namespace MQTTnet.AspNetCore
         private readonly MqttV310Reader _reader;
 
         private ImmutableList<TopicFilter> _subscriptions;
+        private Dictionary<object, SubscriptionNode> _subscriptionIndex = new Dictionary<object, SubscriptionNode>(new SubscriptionNode.Key.Comparer());
 
         public MqttServerConnection(ConnectionContext connection, AspNetMqttServer server, MqttProtocolVersion protocolVersion)
         {
@@ -79,6 +81,12 @@ namespace MQTTnet.AspNetCore
                             case MqttControlPacketType.Subscribe:
                                 var sub = _reader.DecodeSubscribePacket(frame.Body);
                                 _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
+
+                                foreach (var topic in sub.TopicFilters)
+                                {
+                                    SubscriptionNode.Subscribe(topic, _subscriptionIndex);
+                                }
+
                                 _buffer.OnNext(new MqttSubAckPacket()
                                 {
                                     PacketIdentifier = sub.PacketIdentifier
@@ -118,18 +126,7 @@ namespace MQTTnet.AspNetCore
 
         private bool PacketFilter(MqttFrame frame)
         {
-            //dont _subscriptions.Find it allocates delegate
-            var p = new MqttV3PublishPacket(frame);
-
-            for (int i = 0; i < _subscriptions.Count; i++)
-            {
-                if (MqttTopicFilterComparer.IsMatch(p.Topic, _subscriptions[i].Topic))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return SubscriptionNode.IsMatch(new MqttV3PublishPacket(frame).Topic, _subscriptionIndex);
         }
     }
 }
