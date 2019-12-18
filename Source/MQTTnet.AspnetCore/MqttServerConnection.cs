@@ -29,7 +29,7 @@ namespace MQTTnet.AspNetCore
         private readonly MqttV310Reader _reader;
 
         private ImmutableList<TopicFilter> _subscriptions;
-        private Dictionary<object, SubscriptionNode> _subscriptionIndex = new Dictionary<object, SubscriptionNode>(new SubscriptionNode.Key.Comparer());
+        private SubscriptionNode.Index _subscriptionIndex = new SubscriptionNode.Index();
 
         public MqttServerConnection(ConnectionContext connection, AspNetMqttServer server, MqttProtocolVersion protocolVersion)
         {

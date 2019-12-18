@@ -28,6 +28,12 @@ namespace MQTTnet.AspNetCore.Topics
                 {
                     var left = GetData(x);
                     var right = GetData(y);
+
+                    if (left.Length == 1 && left[0] == TopicToken.SingleLevelWildcard || left[0] == TopicToken.MultiLevelWildcard)
+                    {
+                        return true;
+                    }
+
                     return left.SequenceEqual(right);
                 }
 
@@ -48,21 +54,49 @@ namespace MQTTnet.AspNetCore.Topics
 
                 public int GetHashCode([DisallowNull] object obj)
                 {
-                    return 42;
+                    var data = GetData(obj);
+
+                    unchecked
+                    {
+                        const int p = 16777619;
+                        int hash = (int)2166136261;
+
+                        for (int i = 0; i < data.Length; i++)
+                            hash = (hash ^ data[i]) * p;
+
+                        hash += hash << 13;
+                        hash ^= hash >> 7;
+                        hash += hash << 3;
+                        hash ^= hash >> 17;
+                        hash += hash << 5;
+                        return hash;
+                    }
                 }
             }
         }
 
+        public class Index : Dictionary<object, SubscriptionNode>
+        {
+            public Index()
+                : base(new Key.Comparer())
+            {
+            }
+
+            public SubscriptionNode SingleLevelWildcard { get; set; }
+
+            public bool IsMultiLevelWildCard { get; set; }
+        }
+
         public Key Id { get; }
-        public Dictionary<object, SubscriptionNode> Children { get; }
+        public Index Children { get; }
 
         public SubscriptionNode(Key id)
         {
             Id = id;
-            Children = new Dictionary<object, SubscriptionNode>(new Key.Comparer());
+            Children = new Index();
         }
 
-        public static void Subscribe(TopicFilter filter, Dictionary<object, SubscriptionNode> items)
+        public static void Subscribe(TopicFilter filter, Index items)
         {
             ReadOnlySpan<byte> topic = filter.Topic.AsSpan();
             var currentItems = items;
@@ -70,12 +104,37 @@ namespace MQTTnet.AspNetCore.Topics
             foreach (var segment in topic.SplitSegments())
             {
                 currentItems = Subscribe(segment, currentItems);
+                if (currentItems == null)
+                {
+                    break;
+                }
             }
         }
 
-        private static Dictionary<object, SubscriptionNode> Subscribe(ReadOnlySpan<byte> topicSegment, Dictionary<object, SubscriptionNode> items)
+        private static Index Subscribe(ReadOnlySpan<byte> topicSegment, Index items)
         {
             var key = new Key(topicSegment.ToArray());
+
+            if (topicSegment.Length == 1)
+            {
+                switch (topicSegment[0])
+                {
+                    case (byte)TopicToken.SingleLevelWildcard:
+                        if (items.SingleLevelWildcard == null)
+                        {
+                            items.SingleLevelWildcard = new SubscriptionNode(new Key(Memory<byte>.Empty));
+                        }
+
+                        return items.SingleLevelWildcard.Children;
+                    case (byte)TopicToken.MultiLevelWildcard:
+                        items.IsMultiLevelWildCard = true;
+                        return null;
+                    default:
+                        break;
+                }
+            }
+
+
             if (!items.TryGetValue(key, out var node))
             {
                 node = new SubscriptionNode(key);
@@ -85,20 +144,37 @@ namespace MQTTnet.AspNetCore.Topics
             return node.Children;
         }
 
-        public static bool IsMatch(ReadOnlySpan<byte> topic, Dictionary<object, SubscriptionNode> items)
+        public static bool IsMatch(ReadOnlySpan<byte> topic, Index items)
         {
             var currentItems = items;
             foreach (var token in topic.SplitSegments())
             {
+                if (currentItems.IsMultiLevelWildCard)
+                {
+                    return true;
+                }
+                
                 if (!currentItems.TryGetValue(token.ToArray(), out var node))
                 {
-                    return false;
+                    if (currentItems.SingleLevelWildcard == null)
+                    {
+                        return false;
+                    }
+                    else 
+                    {
+                        node = currentItems.SingleLevelWildcard;
+                    }
                 }
 
                 currentItems = node.Children;
             }
 
             return true;
+        }
+
+        public bool IsMultiLevelWildCard 
+        {
+            get { return Id.Data.Length > 0 && Id.Data.Span[0] == TopicToken.MultiLevelWildcard; }
         }
     }
 }
