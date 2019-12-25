@@ -64,10 +64,14 @@ namespace MQTTnet.AspNetCore
             {
                 while (!ct.IsCancellationRequested)
                 {
+                    var result = await reader.ReadAsync(ct);
+                    if (result.IsCanceled || result.IsCompleted)
+                    {
+                        return;
+                    }
                     try
                     {
-                        var frame = await reader.ReadAsync(ct);
-                        switch (frame.PacketType)
+                        switch (result.Message.PacketType)
                         {
                             case MqttControlPacketType.Connect:
                                 _buffer.OnNext(new MqttConnAckPacket()
@@ -76,10 +80,10 @@ namespace MQTTnet.AspNetCore
                                 });
                                 break;
                             case MqttControlPacketType.Publish:
-                                _server.Packets.OnNext(frame);
+                                _server.Packets.OnNext(result.Message);
                                 break;
                             case MqttControlPacketType.Subscribe:
-                                var sub = _reader.DecodeSubscribePacket(frame.Body);
+                                var sub = _reader.DecodeSubscribePacket(result.Message.Body);
                                 _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
 
                                 foreach (var topic in sub.TopicFilters)
@@ -101,9 +105,9 @@ namespace MQTTnet.AspNetCore
                                 break;
                         }
                     }
-                    catch (OperationCanceledException)
+                    finally
                     {
-                        return;
+                        reader.Advance();
                     }
                 }
             }

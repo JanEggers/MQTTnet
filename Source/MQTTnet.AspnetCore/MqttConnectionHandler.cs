@@ -22,9 +22,17 @@ namespace MQTTnet.AspNetCore
                 transferFormatFeature.ActiveFormat = TransferFormat.Binary;
             }
 
-            var protocolVersion = await connection.CreateMqttVersionReader().ReadAsync(connection.ConnectionClosed);
+            var versionReader = connection.CreateMqttVersionReader();
 
-            var mqttConnection = new MqttServerConnection(connection, Server, protocolVersion);
+            var readResult = await versionReader.ReadAsync(connection.ConnectionClosed);
+            if (readResult.IsCanceled || readResult.IsCompleted)
+            {
+                return;
+            }
+
+            versionReader.Advance();
+
+            var mqttConnection = new MqttServerConnection(connection, Server, readResult.Message);
 
             await mqttConnection.Run();
         }

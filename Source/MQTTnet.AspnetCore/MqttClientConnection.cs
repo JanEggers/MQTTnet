@@ -35,7 +35,7 @@ namespace MQTTnet.AspNetCore
             FrameReader = connection.CreateMqttFrameReader();
         }
 
-        public async ValueTask<MqttFrame> SendConnectAsync(MqttConnectPacket connectPacket, CancellationToken cancellationToken = default)
+        public async ValueTask<ReadResult<MqttFrame>> SendConnectAsync(MqttConnectPacket connectPacket, CancellationToken cancellationToken = default)
         {
             await MqttWriter.WriteAsync(connectPacket, cancellationToken);
             return await FrameReader.ReadAsync(cancellationToken);

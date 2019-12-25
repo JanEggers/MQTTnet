@@ -42,21 +42,21 @@ namespace MQTTnet.Benchmarks
             //        BenchmarkRunner.Run<MqttTcpChannelBenchmark>();
             //        break;
             //    case '7':
-                    //BenchmarkRunner.Run<MessageProcessingMqttConnectionContextBenchmark>(
-                    //    new DebugInProcessConfig()
-                    //    //DefaultConfig.Instance
-                    //    //.With(new ConcurrencyVisualizerProfiler())
-                    //    //.With(Job.InProcess)
-                    //    );
+            BenchmarkRunner.Run<MessageProcessingMqttConnectionContextBenchmark>(
+                new DebugInProcessConfig()
+                //DefaultConfig.Instance
+                //.With(new ConcurrencyVisualizerProfiler())
+                //.With(Job.InProcess)
+                );
             //        break;
             //}
 
-            BenchmarkRunner.Run<TopicFilterComparerBenchmark>(
-                        new DebugInProcessConfig()
-                        //DefaultConfig.Instance
-                        //.With(new ConcurrencyVisualizerProfiler())
-                        //.With(Job.InProcess)
-                        );
+            //BenchmarkRunner.Run<TopicFilterComparerBenchmark>(
+            //            new DebugInProcessConfig()
+            //            //DefaultConfig.Instance
+            //            //.With(new ConcurrencyVisualizerProfiler())
+            //            //.With(Job.InProcess)
+            //            );
 
             Console.ReadLine();
         }

@@ -39,6 +39,7 @@ namespace MQTTnet.Benchmarks
 
             _connection = await factory.ConnectAsync<MqttClientConnection>(new DnsEndPoint("localhost", 1883));
             var connack = await _connection.SendConnectAsync(new MqttConnectPacket() { ClientId = "client" });
+            _connection.FrameReader.Advance();
             await _connection.SubscribeAsync(new MqttSubscribePacket()
             {
                 PacketIdentifier = 1,
@@ -108,7 +109,8 @@ namespace MQTTnet.Benchmarks
 
             for (int i = 0; i < count; i++)
             {
-                await reader.ReadAsync();
+                var readresult = await reader.ReadAsync();
+                reader.Advance();
             }
         }
 

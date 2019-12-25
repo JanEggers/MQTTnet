@@ -24,7 +24,7 @@ namespace MQTTnet.AspNetCore.Topics
             
             public class Comparer : IEqualityComparer<object>
             {
-                public bool Equals([AllowNull] object x, [AllowNull] object y)
+                bool IEqualityComparer<object>.Equals([AllowNull] object x, [AllowNull] object y)
                 {
                     var left = GetData(x);
                     var right = GetData(y);
@@ -52,7 +52,7 @@ namespace MQTTnet.AspNetCore.Topics
                     }
                 }
 
-                public int GetHashCode([DisallowNull] object obj)
+                int IEqualityComparer<object>.GetHashCode([DisallowNull] object obj)
                 {
                     var data = GetData(obj);
 
