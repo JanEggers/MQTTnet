@@ -8,77 +8,42 @@ namespace MQTTnet.AspNetCore.Topics
 {
     public class SubscriptionNode
     {
-        public class Key 
+        public class Comparer : IEqualityComparer<byte[]>
         {
-            public ReadOnlyMemory<byte> Data { get; }
-
-            public Key(ReadOnlyMemory<byte> data)
+            bool IEqualityComparer<byte[]>.Equals([AllowNull] byte[] left, [AllowNull] byte[] right)
             {
-                Data = data;
-            }
-
-            public override string ToString()
-            {
-                return Encoding.UTF8.GetString(Data.Span);
-            }
-            
-            public class Comparer : IEqualityComparer<object>
-            {
-                bool IEqualityComparer<object>.Equals([AllowNull] object x, [AllowNull] object y)
+                if (left.Length == 1 && left[0] == TopicToken.SingleLevelWildcard || left[0] == TopicToken.MultiLevelWildcard)
                 {
-                    var left = GetData(x);
-                    var right = GetData(y);
-
-                    if (left.Length == 1 && left[0] == TopicToken.SingleLevelWildcard || left[0] == TopicToken.MultiLevelWildcard)
-                    {
-                        return true;
-                    }
-
-                    return left.SequenceEqual(right);
+                    return true;
                 }
 
-                private ReadOnlySpan<byte> GetData(object obj)
+                return left.AsSpan().SequenceEqual(right);
+            }
+
+            int IEqualityComparer<byte[]>.GetHashCode([DisallowNull] byte[] data)
+            {
+                unchecked
                 {
-                    switch (obj)
-                    {
-                        case Key key:
-                            return key.Data.Span;
-                        case ReadOnlyMemory<byte> mem:
-                            return mem.Span;
-                        case byte[] arr:
-                            return arr.AsSpan();
-                        default:
-                            return ReadOnlySpan<byte>.Empty;
-                    }
-                }
+                    const int p = 16777619;
+                    int hash = (int)2166136261;
 
-                int IEqualityComparer<object>.GetHashCode([DisallowNull] object obj)
-                {
-                    var data = GetData(obj);
+                    for (int i = 0; i < data.Length; i++)
+                        hash = (hash ^ data[i]) * p;
 
-                    unchecked
-                    {
-                        const int p = 16777619;
-                        int hash = (int)2166136261;
-
-                        for (int i = 0; i < data.Length; i++)
-                            hash = (hash ^ data[i]) * p;
-
-                        hash += hash << 13;
-                        hash ^= hash >> 7;
-                        hash += hash << 3;
-                        hash ^= hash >> 17;
-                        hash += hash << 5;
-                        return hash;
-                    }
+                    hash += hash << 13;
+                    hash ^= hash >> 7;
+                    hash += hash << 3;
+                    hash ^= hash >> 17;
+                    hash += hash << 5;
+                    return hash;
                 }
             }
         }
 
-        public class Index : Dictionary<object, SubscriptionNode>
+        public class Index : Dictionary<byte[], SubscriptionNode>
         {
             public Index()
-                : base(new Key.Comparer())
+                : base(new Comparer())
             {
             }
 
@@ -87,10 +52,10 @@ namespace MQTTnet.AspNetCore.Topics
             public bool IsMultiLevelWildCard { get; set; }
         }
 
-        public Key Id { get; }
+        public byte[] Id { get; }
         public Index Children { get; }
 
-        public SubscriptionNode(Key id)
+        public SubscriptionNode(byte[] id)
         {
             Id = id;
             Children = new Index();
@@ -113,7 +78,7 @@ namespace MQTTnet.AspNetCore.Topics
 
         private static Index Subscribe(ReadOnlySpan<byte> topicSegment, Index items)
         {
-            var key = new Key(topicSegment.ToArray());
+            var key = topicSegment.ToArray();
 
             if (topicSegment.Length == 1)
             {
@@ -122,7 +87,7 @@ namespace MQTTnet.AspNetCore.Topics
                     case (byte)TopicToken.SingleLevelWildcard:
                         if (items.SingleLevelWildcard == null)
                         {
-                            items.SingleLevelWildcard = new SubscriptionNode(new Key(Memory<byte>.Empty));
+                            items.SingleLevelWildcard = new SubscriptionNode(Array.Empty<byte>());
                         }
 
                         return items.SingleLevelWildcard.Children;
@@ -174,7 +139,7 @@ namespace MQTTnet.AspNetCore.Topics
 
         public bool IsMultiLevelWildCard 
         {
-            get { return Id.Data.Length > 0 && Id.Data.Span[0] == TopicToken.MultiLevelWildcard; }
+            get { return Id.Length > 0 && Id[0] == TopicToken.MultiLevelWildcard; }
         }
     }
 }

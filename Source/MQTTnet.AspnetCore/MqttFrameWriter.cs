@@ -9,13 +9,14 @@ namespace MQTTnet.AspNetCore
     {
         public void WriteMessage(MqttFrame message, IBufferWriter<byte> output)
         {
-            var remainingLengthSize = MqttPacketWriter.GetLengthOfVariableInteger(message.Body.Length);
-            var totalSize = 1 + remainingLengthSize + message.Body.Length;
+            var bodyLength = (int)message.Body.Length;
+            var remainingLengthSize = MqttPacketWriter.GetLengthOfVariableInteger(bodyLength);
+            var totalSize = 1 + remainingLengthSize + bodyLength;
             var buffer = output.GetSpan(totalSize);
 
             buffer[0] = message.Header;
-            buffer.Slice(1).WriteVariableLengthInteger(message.Body.Length);
-            message.Body.AsSpan().CopyTo(buffer.Slice(1 + remainingLengthSize));
+            buffer.Slice(1).WriteVariableLengthInteger(bodyLength);
+            message.Body.CopyTo(buffer.Slice(1 + remainingLengthSize));
             output.Advance(totalSize);
         }
     }

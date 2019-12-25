@@ -31,9 +31,7 @@ namespace MQTTnet.AspNetCore
 
             var bodySlice = copy.Slice(0, bodyLength);
 
-            var body = new byte[bodyLength];
-            bodySlice.CopyTo(body);
-            message = new MqttFrame(input.First.Span[0], body);
+            message = new MqttFrame(input.First.Span[0], bodySlice);
             consumed = bodySlice.End;
             examined = bodySlice.End;
             return true;

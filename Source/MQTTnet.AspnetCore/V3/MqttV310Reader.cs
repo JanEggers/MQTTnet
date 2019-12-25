@@ -29,7 +29,7 @@ namespace MQTTnet.AspNetCore.V3
 
         public MqttBasePacket Decode(in MqttFrame frame)
         {
-            ReadOnlySpan<byte> body = frame.Body;
+            ReadOnlySpan<byte> body = frame.Body.ToSpan();
 
             switch (frame.PacketType)
             {

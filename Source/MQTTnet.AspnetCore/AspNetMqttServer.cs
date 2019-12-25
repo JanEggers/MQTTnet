@@ -1,10 +1,9 @@
-﻿using System.Reactive.Subjects;
-using MQTTnet.Packets;
+﻿using System.Collections.Immutable;
 
 namespace MQTTnet.AspNetCore
 {
     public class AspNetMqttServer 
     {
-        public Subject<MqttFrame> Packets { get; } = new Subject<MqttFrame>();
+        public ImmutableArray<MqttServerConnection> Connections { get; set; } = ImmutableArray<MqttServerConnection>.Empty;
     }
 }

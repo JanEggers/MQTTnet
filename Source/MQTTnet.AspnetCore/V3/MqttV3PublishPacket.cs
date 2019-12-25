@@ -9,7 +9,7 @@ namespace MQTTnet.AspNetCore.V3
         {
             _header = frame.Header;
 
-            ReadOnlySpan<byte> body = frame.Body;
+            ReadOnlySpan<byte> body = frame.Body.ToSpan();
 
             Topic = body.ReadSegmentWithLengthPrefix();
 

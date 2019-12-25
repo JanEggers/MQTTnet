@@ -34,7 +34,16 @@ namespace MQTTnet.AspNetCore
 
             var mqttConnection = new MqttServerConnection(connection, Server, readResult.Message);
 
-            await mqttConnection.Run();
+            try
+            {
+                Server.Connections = Server.Connections.Add(mqttConnection);
+
+                await mqttConnection.Run();
+            }
+            finally
+            {
+                Server.Connections = Server.Connections.Remove(mqttConnection);
+            }
         }
     }
 }

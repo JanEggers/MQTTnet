@@ -1,5 +1,6 @@
 ﻿using MQTTnet.Exceptions;
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -7,6 +8,15 @@ namespace MQTTnet.AspNetCore
 {
     public static class ReadOnlySpanExtensions
     {
+        public static ReadOnlySpan<byte> ToSpan(this in ReadOnlySequence<byte> buffer)
+        {
+            if (buffer.IsSingleSegment)
+            {
+                return buffer.FirstSpan;
+            }
+            return buffer.ToArray();
+        }
+
         public static ReadOnlySpan<byte> Read(this ref ReadOnlySpan<byte> buffer, int count)
         {
             var result = buffer.Slice(0, count);

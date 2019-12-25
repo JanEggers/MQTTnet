@@ -20,7 +20,7 @@ namespace MQTTnet.AspNetCore
                 return false;
             }
 
-            ReadOnlySpan<byte> buffer = frame.Body;
+            ReadOnlySpan<byte> buffer = frame.Body.ToSpan();
             var protocolName = buffer.ReadStringWithLengthPrefix();
             var protocolLevel = buffer.ReadByte();
 
