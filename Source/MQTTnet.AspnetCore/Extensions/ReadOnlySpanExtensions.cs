@@ -17,6 +17,13 @@ namespace MQTTnet.AspNetCore
             return buffer.ToArray();
         }
 
+        public static ReadOnlySequence<byte> Read(this ref ReadOnlySequence<byte> buffer, int count)
+        {
+            var result = buffer.Slice(0, count);
+            buffer = buffer.Slice(count);
+            return result;
+        }
+
         public static ReadOnlySpan<byte> Read(this ref ReadOnlySpan<byte> buffer, int count)
         {
             var result = buffer.Slice(0, count);
@@ -39,6 +46,29 @@ namespace MQTTnet.AspNetCore
         public static byte[] ReadWithLengthPrefix(this ref ReadOnlySpan<byte> buffer)
         {
             return buffer.ReadSegmentWithLengthPrefix().ToArray();
+        }
+
+        public static ReadOnlySequence<byte> ReadSegmentWithLengthPrefix(this ref ReadOnlySequence<byte> buffer)
+        {
+            ushort length = 0;
+
+            var lengthSlice = buffer.Slice(0, 2);
+
+            if (lengthSlice.IsSingleSegment)
+            {
+                length = BinaryPrimitives.ReadUInt16BigEndian(lengthSlice.FirstSpan);
+            }
+            else
+            {
+                Span<byte> temp = stackalloc byte[2];
+                lengthSlice.CopyTo(temp);
+                length = BinaryPrimitives.ReadUInt16BigEndian(temp);
+            }
+
+
+            var result = buffer.Slice(2, length);
+            buffer = buffer.Slice(2 + length);
+            return result;
         }
 
         public static ReadOnlySpan<byte> ReadSegmentWithLengthPrefix(this ref ReadOnlySpan<byte> buffer)

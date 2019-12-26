@@ -20,6 +20,13 @@ namespace System.Buffers
             writer.Advance(written);
         }
 
+        public static void WriteByteArray(this IBufferWriter<byte> writer, byte[] data)
+        {
+            var buffer = writer.GetSpan(data.Length);
+            data.CopyTo(buffer);
+            writer.Advance(data.Length);
+        }
+
         public static void WriteWithLengthPrefix(this IBufferWriter<byte> writer, byte[] data) 
         {
             var written = data.Length + 2;

@@ -11,13 +11,43 @@ namespace MQTTnet.AspNetCore
         {
             var bodyLength = (int)message.Body.Length;
             var remainingLengthSize = MqttPacketWriter.GetLengthOfVariableInteger(bodyLength);
-            var totalSize = 1 + remainingLengthSize + bodyLength;
-            var buffer = output.GetSpan(totalSize);
+            var headerSize = 1 + remainingLengthSize;
 
+
+            var buffer = output.GetSpan(headerSize);
             buffer[0] = message.Header;
             buffer.Slice(1).WriteVariableLengthInteger(bodyLength);
-            message.Body.CopyTo(buffer.Slice(1 + remainingLengthSize));
-            output.Advance(totalSize);
+            output.Advance(headerSize);
+            
+            if (message.Body.IsSingleSegment)
+            {
+                var remainingSize = bodyLength;
+                var start = 0;
+
+                const int chunkSize = 4096;
+                while (remainingSize > chunkSize)
+                {
+                    buffer = output.GetSpan(chunkSize);
+
+                    message.Body.Slice(start, chunkSize).CopyTo(buffer);
+                    output.Advance(chunkSize);
+                    start += chunkSize;
+                    remainingSize -= chunkSize;
+                }
+
+                buffer = output.GetSpan(remainingSize);
+                message.Body.Slice(start, remainingSize).CopyTo(buffer);
+                output.Advance(remainingSize);
+            }
+            else
+            {
+                foreach (var mem in message.Body)
+                {
+                    buffer = output.GetSpan(mem.Length);
+                    mem.Span.CopyTo(buffer);
+                    output.Advance(mem.Length);
+                }
+            }
         }
     }
 }

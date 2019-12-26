@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -109,7 +110,7 @@ namespace MQTTnet.AspNetCore.Topics
             return node.Children;
         }
 
-        public static bool IsMatch(ReadOnlySpan<byte> topic, Index items)
+        public static bool IsMatch(in ReadOnlySequence<byte> topic, Index items)
         {
             var currentItems = items;
             foreach (var token in topic.SplitSegments())

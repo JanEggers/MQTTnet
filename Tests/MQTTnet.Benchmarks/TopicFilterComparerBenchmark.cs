@@ -2,6 +2,7 @@
 using MQTTnet.AspNetCore.Topics;
 using MQTTnet.Server;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using MqttTopicFilterComparer = MQTTnet.Server.MqttTopicFilterComparer;
@@ -72,7 +73,7 @@ namespace MQTTnet.Benchmarks
         {
             var topic = Encoding.UTF8.GetBytes("z/z");
 
-            SubscriptionNode.IsMatch(topic.AsSpan(), _subscriptionIndex);
+            SubscriptionNode.IsMatch(new ReadOnlySequence<byte>(topic), _subscriptionIndex);
         }
 
 

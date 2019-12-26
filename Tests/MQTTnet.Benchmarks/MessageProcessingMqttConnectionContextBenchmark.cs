@@ -79,6 +79,7 @@ namespace MQTTnet.Benchmarks
             _message = new MqttPublishPacket() 
             {
                 Topic = Encoding.UTF8.GetBytes("A"),
+                Payload = new byte[100_000]
             };
         }
 
@@ -97,11 +98,13 @@ namespace MQTTnet.Benchmarks
             Task.WhenAll(Write(), Read()).GetAwaiter().GetResult();
         }
 
+        private const int iterations = 10000;
+
         private async Task Read()
         {
             await Task.Yield();
 
-            var count = 10000 // publish
+            var count = iterations // publish
                       + 1 // ping
                       ;
 
@@ -118,13 +121,19 @@ namespace MQTTnet.Benchmarks
         {
             await Task.Yield();
 
-            var msgs = new MqttPublishPacket[10000];
+            //var msgs = new MqttPublishPacket[10000];
 
-            for (var i = 0; i < 10000; i++)
+            //for (var i = 0; i < iterations; i++)
+            //{
+            //    msgs[i] = _message;
+            //}
+            //await _connection.MqttWriter.WriteManyAsync(msgs);
+
+            for (int i = 0; i < iterations; i++)
             {
-                msgs[i] = _message;
+                await _connection.MqttWriter.WriteAsync(_message);
             }
-            await _connection.MqttWriter.WriteManyAsync(msgs);
+
             await _connection.MqttWriter.WriteAsync(new MqttPingReqPacket());
         }
     }

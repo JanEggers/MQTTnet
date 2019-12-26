@@ -11,23 +11,17 @@ namespace MQTTnet.AspNetCore.V3
 {
     public class MqttV310Writer : IProtocolWriter<MqttBasePacket>
     {
-        private const int FixedHeaderSize = 1;
-
         private MqttBufferWriter _writer = new MqttBufferWriter();
+        private MqttFrameWriter _frameWriter = new MqttFrameWriter();
 
         public void WriteMessage(MqttBasePacket message, IBufferWriter<byte> output)
         {
             var fixedHeader = EncodePacket(message, _writer);
             var written = _writer.Written;
-            var remainingLengthSize = MqttPacketWriter.GetLengthOfVariableInteger(written.Length);
-            var totalSize = FixedHeaderSize + remainingLengthSize + written.Length;
-            var buffer = output.GetSpan(totalSize);
 
-            buffer[0] = fixedHeader;
-            buffer.Slice(FixedHeaderSize).WriteVariableLengthInteger(written.Length);
-            written.Span.CopyTo(buffer.Slice(FixedHeaderSize + remainingLengthSize));
+            var frame = new MqttFrame(fixedHeader, new ReadOnlySequence<byte>(written));
+            _frameWriter.WriteMessage(frame, output);
             _writer.Reset();
-            output.Advance(totalSize);
         }
 
         private byte EncodePacket(MqttBasePacket packet, IBufferWriter<byte> packetWriter)
@@ -165,7 +159,7 @@ namespace MQTTnet.AspNetCore.V3
 
             if (packet.Payload?.Length > 0)
             {
-                packetWriter.Write(packet.Payload);
+                packetWriter.WriteByteArray(packet.Payload);
             }
 
             byte fixedHeader = 0;

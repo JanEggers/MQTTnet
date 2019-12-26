@@ -44,6 +44,10 @@ namespace MQTTnet.AspNetCore
 
         public void Reset()
         {
+            if (_rented == null)
+            {
+                return;
+            }
             if (_rented.Length <= 1024)
             {
                 _remaining = _total;

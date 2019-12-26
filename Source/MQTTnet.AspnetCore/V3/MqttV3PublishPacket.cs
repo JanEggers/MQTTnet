@@ -1,5 +1,6 @@
 ﻿using MQTTnet.Protocol;
 using System;
+using System.Buffers;
 
 namespace MQTTnet.AspNetCore.V3
 {
@@ -8,12 +9,12 @@ namespace MQTTnet.AspNetCore.V3
         public MqttV3PublishPacket(in MqttFrame frame)
         {
             _header = frame.Header;
-
-            ReadOnlySpan<byte> body = frame.Body.ToSpan();
-
+            
+            var body = frame.Body;
+            
             Topic = body.ReadSegmentWithLengthPrefix();
 
-            var packetIdentifier = ReadOnlySpan<byte>.Empty;
+            var packetIdentifier = ReadOnlySequence<byte>.Empty;
             if (Qos(frame.Header) > MqttQualityOfServiceLevel.AtMostOnce)
             {
                 packetIdentifier = body.Read(2);
@@ -25,7 +26,7 @@ namespace MQTTnet.AspNetCore.V3
 
         private byte _header;
 
-        public ReadOnlySpan<byte> PacketIdentifier { get; }
+        public ReadOnlySequence<byte> PacketIdentifier { get; }
         public bool Retain => (_header & 0x1) > 0;
 
         public MqttQualityOfServiceLevel QualityOfServiceLevel => Qos(_header);
@@ -37,8 +38,8 @@ namespace MQTTnet.AspNetCore.V3
 
         public bool Dup => (_header & 0x8) > 0;
 
-        public ReadOnlySpan<byte> Topic { get; }
+        public ReadOnlySequence<byte> Topic { get; }
 
-        public ReadOnlySpan<byte> Payload { get; }
+        public ReadOnlySequence<byte> Payload { get; }
     }
 }

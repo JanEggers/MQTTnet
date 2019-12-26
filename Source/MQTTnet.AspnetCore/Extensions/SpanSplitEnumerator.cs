@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using MQTTnet.AspNetCore.Topics;
+using System.Buffers;
 
 namespace System
 {
@@ -26,6 +27,12 @@ namespace System
 
         public static SpanSplitEnumerator<byte> SplitSegments(this ReadOnlySpan<byte> span)
             => span.Split((byte)TopicToken.LevelSeparator);
+
+
+        public static SequenceSplitEnumerator<byte> Split(this ReadOnlySequence<byte> sequence, byte separator)
+            => new SequenceSplitEnumerator<byte>(sequence, separator);
+        public static SequenceSplitEnumerator<byte> SplitSegments(this ReadOnlySequence<byte> sequence)
+            => sequence.Split((byte)TopicToken.LevelSeparator);
     }
 
     public ref struct SpanSplitEnumerator<T> where T : IEquatable<T>
@@ -84,6 +91,40 @@ namespace System
 
             var nextIdx = slice.IndexOf(_separator);
             _index = (nextIdx != -1 ? nextIdx : slice.Length) + 1;
+            return true;
+        }
+    }
+
+    public ref struct SequenceSplitEnumerator<T> where T : IEquatable<T>
+    {
+        private readonly ReadOnlySequence<T> _sequence;
+        private readonly T _separator;
+        private SequencePosition _offset;
+        private SequencePosition _index;
+
+        public SequenceSplitEnumerator<T> GetEnumerator() => this;
+
+        internal SequenceSplitEnumerator(ReadOnlySequence<T> sequence, T separator)
+        {
+            _sequence = sequence;
+            _separator = separator;
+            _index = _sequence.Start;
+            _offset = _sequence.Start;
+        }
+
+        public ReadOnlySequence<T> Current => _sequence.Slice(_offset, _index);
+
+        public bool MoveNext()
+        {
+            if (_index.Equals(_sequence.End)) { return false; }
+
+            if (!_index.Equals(_sequence.Start))
+            {
+                _offset = _sequence.GetPosition(1, _index);
+            }
+            
+            var nextIdx = _sequence.Slice(_offset).PositionOf(_separator);
+            _index = nextIdx.HasValue ? nextIdx.Value : _sequence.End;
             return true;
         }
     }
