@@ -9,42 +9,9 @@ namespace MQTTnet.AspNetCore.Topics
 {
     public class SubscriptionNode
     {
-        public class Comparer : IEqualityComparer<byte[]>
-        {
-            bool IEqualityComparer<byte[]>.Equals([AllowNull] byte[] left, [AllowNull] byte[] right)
-            {
-                if (left.Length == 1 && left[0] == TopicToken.SingleLevelWildcard || left[0] == TopicToken.MultiLevelWildcard)
-                {
-                    return true;
-                }
-
-                return left.AsSpan().SequenceEqual(right);
-            }
-
-            int IEqualityComparer<byte[]>.GetHashCode([DisallowNull] byte[] data)
-            {
-                unchecked
-                {
-                    const int p = 16777619;
-                    int hash = (int)2166136261;
-
-                    for (int i = 0; i < data.Length; i++)
-                        hash = (hash ^ data[i]) * p;
-
-                    hash += hash << 13;
-                    hash ^= hash >> 7;
-                    hash += hash << 3;
-                    hash ^= hash >> 17;
-                    hash += hash << 5;
-                    return hash;
-                }
-            }
-        }
-
-        public class Index : Dictionary<byte[], SubscriptionNode>
+        public class Index : SpanKeyDictionary<SubscriptionNode>
         {
             public Index()
-                : base(new Comparer())
             {
             }
 
@@ -119,8 +86,10 @@ namespace MQTTnet.AspNetCore.Topics
                 {
                     return true;
                 }
+
+                ReadOnlySpan<byte> key = token.IsSingleSegment ? token.FirstSpan : token.ToArray();
                 
-                if (!currentItems.TryGetValue(token.ToArray(), out var node))
+                if (!currentItems.TryGetValue(key, out var node))
                 {
                     if (currentItems.SingleLevelWildcard == null)
                     {
