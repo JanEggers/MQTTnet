@@ -5,7 +5,7 @@ using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttFrameReader : IProtocolReader<MqttFrame>
+    public class MqttFrameReader : IMessageReader<MqttFrame>
     {
         public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttFrame message)
         {

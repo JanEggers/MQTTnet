@@ -9,10 +9,10 @@ using MQTTnet.Protocol;
 
 namespace MQTTnet.AspNetCore.V3
 {
-    public class MqttV310Writer : IProtocolWriter<MqttBasePacket>
+    public class MqttV310Writer : IMessageWriter<MqttBasePacket>
     {
         private MqttBufferWriter _writer = new MqttBufferWriter();
-        private MqttFrameWriter _frameWriter = new MqttFrameWriter();
+        public MqttFrameWriter FrameWriter { get; } = new MqttFrameWriter();
 
         public void WriteMessage(MqttBasePacket message, IBufferWriter<byte> output)
         {
@@ -20,7 +20,7 @@ namespace MQTTnet.AspNetCore.V3
             var written = _writer.Written;
 
             var frame = new MqttFrame(fixedHeader, new ReadOnlySequence<byte>(written));
-            _frameWriter.WriteMessage(frame, output);
+            FrameWriter.WriteMessage(frame, output);
             _writer.Reset();
         }
 

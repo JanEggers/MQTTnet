@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Connections;
+﻿using Bedrock.Framework.Protocols;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using System.Threading.Tasks;
 
@@ -22,23 +23,23 @@ namespace MQTTnet.AspNetCore
                 transferFormatFeature.ActiveFormat = TransferFormat.Binary;
             }
 
-            var versionReader = connection.CreateMqttVersionReader();
+            var reader = connection.CreateReader();
 
-            var readResult = await versionReader.ReadAsync(connection.ConnectionClosed);
-            if (readResult.IsCanceled || readResult.IsCompleted)
+            var versionResult = await reader.ReadAsync(new MqttProtocolVersionReader(), connection.ConnectionClosed).ConfigureAwait(false);
+            if (versionResult.IsCanceled || versionResult.IsCompleted)
             {
                 return;
             }
 
-            versionReader.Advance();
+            reader.Advance();
 
-            var mqttConnection = new MqttServerConnection(connection, Server, readResult.Message);
+            var mqttConnection = new MqttServerConnection(connection, Server, versionResult.Message);
 
             try
             {
                 Server.Connections = Server.Connections.Add(mqttConnection);
 
-                await mqttConnection.Run();
+                await mqttConnection.Run(connection.ConnectionClosed).ConfigureAwait(false);
             }
             finally
             {

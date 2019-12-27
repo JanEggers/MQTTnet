@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MQTTnet.Formatter;
+using Bedrock.Framework.Protocols;
 
 namespace MQTTnet.AspNetCore.Tests
 {
@@ -20,11 +21,11 @@ namespace MQTTnet.AspNetCore.Tests
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = connection.CreateMqttPacketReader(MqttProtocolVersion.V311);
+            var reader = connection.CreateReader();
 
             pipe.Receive.Writer.Complete();
 
-            await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => ctx.ReadAsync(CancellationToken.None).AsTask());
+            await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => reader.ReadAsync(MqttProtocolVersion.V311.CreateReader(), CancellationToken.None).AsTask());
         }
         
         [TestMethod]
@@ -33,13 +34,14 @@ namespace MQTTnet.AspNetCore.Tests
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = connection.CreateMqttPacketWriter(MqttProtocolVersion.V311);
+            var writer = connection.CreateWriter();
+            var mqttWriter = MqttProtocolVersion.V311.CreateWriter();
 
             var tasks = Enumerable.Range(1, 10).Select(_ => Task.Run(async () => 
             {
                 for (int i = 0; i < 100; i++)
                 {
-                    await ctx.WriteAsync(new MqttPublishPacket(), CancellationToken.None).ConfigureAwait(false);
+                    await writer.WriteAsync(mqttWriter, new MqttPublishPacket(), CancellationToken.None).ConfigureAwait(false);
                 }
             }));
 
@@ -53,9 +55,10 @@ namespace MQTTnet.AspNetCore.Tests
             var pipe = new DuplexPipeMockup();
             var connection = new DefaultConnectionContext();
             connection.Transport = pipe;
-            var ctx = connection.CreateMqttPacketWriter(MqttProtocolVersion.V311);
+            var writer = connection.CreateWriter();
+            var mqttWriter = MqttProtocolVersion.V311.CreateWriter();
 
-            await ctx.WriteAsync(new MqttPublishPacket() { Payload = new byte[20_000] }, CancellationToken.None).ConfigureAwait(false);
+            await writer.WriteAsync(mqttWriter, new MqttPublishPacket() { Payload = new byte[20_000] }, CancellationToken.None).ConfigureAwait(false);
 
             var readResult = await pipe.Send.Reader.ReadAsync();
             Assert.IsTrue(readResult.Buffer.Length > 20000);

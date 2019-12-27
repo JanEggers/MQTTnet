@@ -5,7 +5,7 @@ using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttFrameWriter : IProtocolWriter<MqttFrame>
+    public class MqttFrameWriter : IMessageWriter<MqttFrame>
     {
         public void WriteMessage(MqttFrame message, IBufferWriter<byte> output)
         {

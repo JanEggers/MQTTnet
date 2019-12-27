@@ -11,44 +11,24 @@ using MQTTnet.AspNetCore.Topics;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttServerConnection
+    public class MqttServerConnection : MqttConnection
     {
-        private readonly ConnectionContext _connection;
         private readonly AspNetMqttServer _server;
-        private readonly MqttProtocolVersion _protocolVersion;
-        private readonly ProtocolReader<MqttFrame> _frameReader;
-        private readonly ProtocolWriter<MqttBasePacket> _packetWriter;
-        private readonly ProtocolWriter<MqttFrame> _frameWriter;
-        private readonly MqttV310Reader _reader;
-
         private ImmutableList<TopicFilter> _subscriptions;
         private SubscriptionNode.Index _subscriptionIndex = new SubscriptionNode.Index();
 
         public MqttServerConnection(ConnectionContext connection, AspNetMqttServer server, MqttProtocolVersion protocolVersion)
+            : base(connection, protocolVersion)
         {
-            _connection = connection;
             _server = server;
-            _protocolVersion = protocolVersion;
             _subscriptions = ImmutableList<TopicFilter>.Empty;
-            _frameReader = _connection.CreateMqttFrameReader();
-            _reader = _protocolVersion.CreateReader();
-
-            var semaphore = new SemaphoreSlim(1);
-
-            _packetWriter = _connection.CreateMqttPacketWriter(_protocolVersion, semaphore);
-            _frameWriter = _connection.CreateMqttFrameWriter(semaphore);
         }
-
-
-        public async ValueTask Run()
+        
+        public async ValueTask Run(CancellationToken ct)
         {
-            var ct = _connection.ConnectionClosed;
-            var reader = _frameReader;
-            var packetWriter = _packetWriter;
-
-            while (!ct.IsCancellationRequested)
+            while (true)
             {
-                var result = await reader.ReadAsync(ct);
+                var result = await ReadFrame(ct).ConfigureAwait(false);
                 if (result.IsCanceled || result.IsCompleted)
                 {
                     return;
@@ -58,10 +38,10 @@ namespace MQTTnet.AspNetCore
                     switch (result.Message.PacketType)
                     {
                         case MqttControlPacketType.Connect:
-                            await packetWriter.WriteAsync(new MqttConnAckPacket()
+                            await WritePacket(new MqttConnAckPacket()
                             {
                                 ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
-                            });
+                            }, ct).ConfigureAwait(false);
                             break;
                         case MqttControlPacketType.Publish:
                             foreach (var connection in _server.Connections)
@@ -70,11 +50,11 @@ namespace MQTTnet.AspNetCore
                                 {
                                     continue;
                                 }
-                                await connection._frameWriter.WriteAsync(result.Message);
+                                await connection.WriteFrame(result.Message, ct).ConfigureAwait(false);
                             }
                             break;
                         case MqttControlPacketType.Subscribe:
-                            var sub = _reader.DecodeSubscribePacket(result.Message.Body.ToSpan());
+                            var sub = _mqttMessageReader.DecodeSubscribePacket(result.Message.Body.ToSpan());
                             _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
 
                             foreach (var topic in sub.TopicFilters)
@@ -82,13 +62,13 @@ namespace MQTTnet.AspNetCore
                                 SubscriptionNode.Subscribe(topic, _subscriptionIndex);
                             }
 
-                            await packetWriter.WriteAsync(new MqttSubAckPacket()
+                            await WritePacket(new MqttSubAckPacket()
                             {
                                 PacketIdentifier = sub.PacketIdentifier
-                            });
+                            }, ct).ConfigureAwait(false);
                             break;
                         case MqttControlPacketType.PingReq:
-                            await packetWriter.WriteAsync(new MqttPingRespPacket());
+                            await WritePacket(new MqttPingRespPacket(), ct).ConfigureAwait(false);
                             break;
                         case MqttControlPacketType.Disconnect:
                             return;
@@ -98,7 +78,7 @@ namespace MQTTnet.AspNetCore
                 }
                 finally
                 {
-                    reader.Advance();
+                    Advance();
                 }
             }
         }

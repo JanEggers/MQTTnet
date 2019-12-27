@@ -39,7 +39,6 @@ namespace MQTTnet.Benchmarks
 
             _connection = await factory.ConnectAsync<MqttClientConnection>(new DnsEndPoint("localhost", 1883));
             var connack = await _connection.SendConnectAsync(new MqttConnectPacket() { ClientId = "client" });
-            _connection.FrameReader.Advance();
             await _connection.SubscribeAsync(new MqttSubscribePacket()
             {
                 PacketIdentifier = 1,
@@ -107,13 +106,11 @@ namespace MQTTnet.Benchmarks
             var count = iterations // publish
                       + 1 // ping
                       ;
-
-            var reader = _connection.FrameReader;
-
+                      
             for (int i = 0; i < count; i++)
             {
-                var readresult = await reader.ReadAsync();
-                reader.Advance();
+                var readresult = await _connection.ReadFrame().ConfigureAwait(false);
+                _connection.Advance();
             }
         }
 
@@ -131,10 +128,10 @@ namespace MQTTnet.Benchmarks
 
             for (int i = 0; i < iterations; i++)
             {
-                await _connection.MqttWriter.WriteAsync(_message);
+                await _connection.WritePacket(_message).ConfigureAwait(false); 
             }
 
-            await _connection.MqttWriter.WriteAsync(new MqttPingReqPacket());
+            await _connection.WritePacket(new MqttPingReqPacket()).ConfigureAwait(false);
         }
     }
 }

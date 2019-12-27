@@ -7,18 +7,18 @@ using MQTTnet.Protocol;
 
 namespace MQTTnet.AspNetCore.V3
 {
-    public class MqttV310Reader : IProtocolReader<MqttBasePacket>
+    public class MqttV310Reader : IMessageReader<MqttBasePacket>
     {
         private static readonly MqttPingReqPacket PingReqPacket = new MqttPingReqPacket();
         private static readonly MqttPingRespPacket PingRespPacket = new MqttPingRespPacket();
         private static readonly MqttDisconnectPacket DisconnectPacket = new MqttDisconnectPacket();
-        private readonly MqttFrameReader _frameReader = new MqttFrameReader();
+        public MqttFrameReader FrameReader { get; } = new MqttFrameReader();
 
 
         public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
         {
             message = null;
-            if (!_frameReader.TryParseMessage(input, out consumed, out examined, out var frame))
+            if (!FrameReader.TryParseMessage(input, out consumed, out examined, out var frame))
             {
                 return false;
             }

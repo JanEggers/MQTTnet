@@ -6,7 +6,7 @@ using System.Buffers;
 
 namespace MQTTnet.AspNetCore
 {
-    public class MqttProtocolVersionReader : IProtocolReader<MqttProtocolVersion>
+    public class MqttProtocolVersionReader : IMessageReader<MqttProtocolVersion>
     {
         private readonly MqttFrameReader _frameReader = new MqttFrameReader();
 
