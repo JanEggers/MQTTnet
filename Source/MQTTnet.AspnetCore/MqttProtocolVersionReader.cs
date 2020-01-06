@@ -10,12 +10,12 @@ namespace MQTTnet.AspNetCore
     {
         private readonly MqttFrameReader _frameReader = new MqttFrameReader();
 
-        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttProtocolVersion version)
+        public bool TryParseMessage(in ReadOnlySequence<byte> input, ref SequencePosition consumed, ref SequencePosition examined, out MqttProtocolVersion version)
         {
-            consumed = input.Start;
-            examined = input.Start;
             version = MqttProtocolVersion.V310;
-            if (!_frameReader.TryParseMessage(input, out _, out _, out var frame))
+            var consumedCopy = consumed;
+            var examinedCopy = examined;
+            if (!_frameReader.TryParseMessage(input, ref consumedCopy, ref examinedCopy, out var frame))
             {
                 return false;
             }

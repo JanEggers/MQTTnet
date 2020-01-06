@@ -24,7 +24,7 @@ namespace MQTTnet.AspNetCore
             _options = options;
         }
 
-        public async ValueTask<ReadResult<MqttFrame>> SendConnectAsync(MqttConnectPacket connectPacket, CancellationToken cancellationToken = default)
+        public async ValueTask<ProtocolReadResult<MqttFrame>> SendConnectAsync(MqttConnectPacket connectPacket, CancellationToken cancellationToken = default)
         {
             await WritePacket(connectPacket, cancellationToken).ConfigureAwait(false);
             var result = await ReadFrame(cancellationToken).ConfigureAwait(false);

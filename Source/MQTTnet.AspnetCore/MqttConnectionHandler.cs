@@ -33,7 +33,7 @@ namespace MQTTnet.AspNetCore
 
             reader.Advance();
 
-            var mqttConnection = new MqttServerConnection(connection, Server, versionResult.Message);
+            var mqttConnection = new MqttServerConnection(connection, reader, versionResult.Message, Server);
 
             try
             {

@@ -17,11 +17,16 @@ namespace MQTTnet.AspNetCore
         protected readonly MqttV310Reader _mqttMessageReader;
 
         protected MqttConnection(ConnectionContext connection, MqttProtocolVersion protocolVersion)
+            : this(connection, connection.CreateReader(), protocolVersion)
+        {
+        }
+
+        protected MqttConnection(ConnectionContext connection, ProtocolReader reader, MqttProtocolVersion protocolVersion)
         {
             Connection = connection;
 
             _writer = connection.CreateWriter();
-            _reader = connection.CreateReader();
+            _reader = reader;
 
             _mqttMessageWriter = protocolVersion.CreateWriter();
             _mqttMessageReader = protocolVersion.CreateReader();
@@ -40,12 +45,12 @@ namespace MQTTnet.AspNetCore
             return _writer.WriteAsync(_mqttMessageWriter.FrameWriter, frame, ct);
         }
 
-        public ValueTask<ReadResult<MqttFrame>> ReadFrame(CancellationToken ct)
+        public ValueTask<ProtocolReadResult<MqttFrame>> ReadFrame(CancellationToken ct)
         {
             return _reader.ReadAsync(_mqttMessageReader.FrameReader, ct);
         }
 
-        public ValueTask<ReadResult<MqttFrame>> ReadFrame()
+        public ValueTask<ProtocolReadResult<MqttFrame>> ReadFrame()
             => ReadFrame(Connection.ConnectionClosed);
 
         public void Advance()

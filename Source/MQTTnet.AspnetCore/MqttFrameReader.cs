@@ -7,12 +7,9 @@ namespace MQTTnet.AspNetCore
 {
     public class MqttFrameReader : IMessageReader<MqttFrame>
     {
-        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttFrame message)
+        public bool TryParseMessage(in ReadOnlySequence<byte> input, ref SequencePosition consumed, ref SequencePosition examined, out MqttFrame message)
         {
             message = default;
-            consumed = input.Start;
-            examined = input.End;
-
             if (input.Length < 2)
             {
                 return false;

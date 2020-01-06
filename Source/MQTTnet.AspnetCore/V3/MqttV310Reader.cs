@@ -15,10 +15,10 @@ namespace MQTTnet.AspNetCore.V3
         public MqttFrameReader FrameReader { get; } = new MqttFrameReader();
 
 
-        public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out MqttBasePacket message)
+        public bool TryParseMessage(in ReadOnlySequence<byte> input, ref SequencePosition consumed, ref SequencePosition examined, out MqttBasePacket message)
         {
             message = null;
-            if (!FrameReader.TryParseMessage(input, out consumed, out examined, out var frame))
+            if (!FrameReader.TryParseMessage(input, ref consumed, ref examined, out var frame))
             {
                 return false;
             }

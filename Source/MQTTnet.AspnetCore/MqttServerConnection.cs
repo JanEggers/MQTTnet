@@ -17,8 +17,8 @@ namespace MQTTnet.AspNetCore
         private ImmutableList<TopicFilter> _subscriptions;
         private SubscriptionNode.Index _subscriptionIndex = new SubscriptionNode.Index();
 
-        public MqttServerConnection(ConnectionContext connection, AspNetMqttServer server, MqttProtocolVersion protocolVersion)
-            : base(connection, protocolVersion)
+        public MqttServerConnection(ConnectionContext connection, ProtocolReader reader, MqttProtocolVersion protocolVersion, AspNetMqttServer server)
+            : base(connection, reader, protocolVersion)
         {
             _server = server;
             _subscriptions = ImmutableList<TopicFilter>.Empty;
