@@ -92,7 +92,7 @@ namespace MQTTnet.AspNetCore.V3
             };
         }
 
-        private static MqttBasePacket DecodePubAckPacket(ReadOnlySpan<byte> body)
+        public MqttPubAckPacket DecodePubAckPacket(ReadOnlySpan<byte> body)
         {
             ThrowIfBodyIsEmpty(body);
 

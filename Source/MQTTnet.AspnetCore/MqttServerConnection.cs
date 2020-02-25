@@ -26,7 +26,8 @@ namespace MQTTnet.AspNetCore
         
         public async ValueTask Run(CancellationToken ct)
         {
-            while (true)
+            var running = true;
+            while (running)
             {
                 var result = await ReadFrame(ct).ConfigureAwait(false);
                 if (result.IsCanceled || result.IsCompleted)
@@ -35,46 +36,7 @@ namespace MQTTnet.AspNetCore
                 }
                 try
                 {
-                    switch (result.Message.PacketType)
-                    {
-                        case MqttControlPacketType.Connect:
-                            await WritePacket(new MqttConnAckPacket()
-                            {
-                                ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
-                            }, ct).ConfigureAwait(false);
-                            break;
-                        case MqttControlPacketType.Publish:
-                            foreach (var connection in _server.Connections)
-                            {
-                                if (!connection.PacketFilter(result.Message))
-                                {
-                                    continue;
-                                }
-                                await connection.WriteFrame(result.Message, ct).ConfigureAwait(false);
-                            }
-                            break;
-                        case MqttControlPacketType.Subscribe:
-                            var sub = _mqttMessageReader.DecodeSubscribePacket(result.Message.Body.ToSpan());
-                            _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
-
-                            foreach (var topic in sub.TopicFilters)
-                            {
-                                SubscriptionNode.Subscribe(topic, _subscriptionIndex);
-                            }
-
-                            await WritePacket(new MqttSubAckPacket()
-                            {
-                                PacketIdentifier = sub.PacketIdentifier
-                            }, ct).ConfigureAwait(false);
-                            break;
-                        case MqttControlPacketType.PingReq:
-                            await WritePacket(new MqttPingRespPacket(), ct).ConfigureAwait(false);
-                            break;
-                        case MqttControlPacketType.Disconnect:
-                            return;
-                        default:
-                            break;
-                    }
+                    running = await HandleMqttFrame(result.Message, ct).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -85,7 +47,65 @@ namespace MQTTnet.AspNetCore
 
         private bool PacketFilter(MqttFrame frame)
         {
-            return SubscriptionNode.IsMatch(new MqttV3PublishPacket(frame).Topic, _subscriptionIndex);
+            var packet = new MqttV3PublishPacket(frame);
+            return SubscriptionNode.IsMatch(packet.Topic, _subscriptionIndex);
+        }
+
+        private async ValueTask<bool> HandleMqttFrame(MqttFrame frame, CancellationToken ct) 
+        {
+            switch (frame.PacketType)
+            {
+                case MqttControlPacketType.Connect:
+                    await WritePacket(new MqttConnAckPacket()
+                    {
+                        ReturnCode = Protocol.MqttConnectReturnCode.ConnectionAccepted
+                    }, ct).ConfigureAwait(false);
+                    break;
+                case MqttControlPacketType.Publish:
+                    switch (MqttV3PublishPacket.Qos(frame.Header))
+                    {
+                        case MqttQualityOfServiceLevel.AtLeastOnce:
+                            await WritePacket(new MqttPubAckPacket()
+                            {
+                                PacketIdentifier = MqttV3PublishPacket.ReadPacketIdentifier(frame)
+                            }, ct).ConfigureAwait(false);
+                            break;
+                        default:
+                            break;
+                    }
+
+                    foreach (var connection in _server.Connections)
+                    {
+                        if (!connection.PacketFilter(frame))
+                        {
+                            continue;
+                        }
+                        await connection.WriteFrame(frame, ct).ConfigureAwait(false);
+                    }
+                    break;
+                case MqttControlPacketType.Subscribe:
+                    var sub = _mqttMessageReader.DecodeSubscribePacket(frame.Body.ToSpan());
+                    _subscriptions = _subscriptions.AddRange(sub.TopicFilters);
+
+                    foreach (var topic in sub.TopicFilters)
+                    {
+                        SubscriptionNode.Subscribe(topic, _subscriptionIndex);
+                    }
+
+                    await WritePacket(new MqttSubAckPacket()
+                    {
+                        PacketIdentifier = sub.PacketIdentifier
+                    }, ct).ConfigureAwait(false);
+                    break;
+                case MqttControlPacketType.PingReq:
+                    await WritePacket(new MqttPingRespPacket(), ct).ConfigureAwait(false);
+                    break;
+                case MqttControlPacketType.Disconnect:
+                    return false;
+                default:
+                    break;
+            }
+            return true;
         }
     }
 }

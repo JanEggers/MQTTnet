@@ -30,7 +30,6 @@ namespace MQTTnet.Benchmarks
     {
         private IWebHost _host;
         private AspNetMqttServer _mqttServer;
-        private MqttPublishPacket _message;
         private MqttClientConnection _connection;
 
         private async ValueTask InitConnection(IServiceProvider serviceProvider)
@@ -74,12 +73,6 @@ namespace MQTTnet.Benchmarks
             _host.Start();
 
             InitConnection(_host.Services).GetAwaiter().GetResult();
-
-            _message = new MqttPublishPacket() 
-            {
-                Topic = Encoding.UTF8.GetBytes("A"),
-                Payload = new byte[100_000]
-            };
         }
 
         [GlobalCleanup]
@@ -98,21 +91,39 @@ namespace MQTTnet.Benchmarks
         }
 
         private const int iterations = 10000;
+        private static byte[] topic = Encoding.UTF8.GetBytes("A");
+        private static byte[] payload = new byte[1_000];
 
         private async Task Read()
         {
             await Task.Yield();
 
             var count = iterations // publish
+                      + iterations // ack
                       + 1 // ping
                       ;
                       
             for (int i = 0; i < count; i++)
             {
                 var readresult = await _connection.ReadFrame().ConfigureAwait(false);
+
+                switch (readresult.Message.PacketType)
+                {
+                    case Protocol.MqttControlPacketType.PubAck:
+                        _connection.Acknowledge(readresult.Message);
+                        break;
+                    default:
+                        break;
+                }
+
                 _connection.Advance();
+                readcount++;
             }
         }
+
+        private int readcount = 0;
+        private int writecount = 0;
+        private List<MqttPubAckPacket> acks = new List<MqttPubAckPacket>(iterations);
 
         private async Task Write()
         {
@@ -128,7 +139,10 @@ namespace MQTTnet.Benchmarks
 
             for (int i = 0; i < iterations; i++)
             {
-                await _connection.WritePacket(_message).ConfigureAwait(false); 
+                var ack = await _connection.PublishAtLeastOnce(topic, payload).ConfigureAwait(false);
+
+                acks.Add(ack);
+                writecount++;
             }
 
             await _connection.WritePacket(new MqttPingReqPacket()).ConfigureAwait(false);

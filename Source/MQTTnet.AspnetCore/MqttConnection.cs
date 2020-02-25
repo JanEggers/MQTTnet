@@ -39,7 +39,7 @@ namespace MQTTnet.AspNetCore
 
         public ValueTask WritePacket(MqttBasePacket packet)
             => WritePacket(packet, Connection.ConnectionClosed);
-
+                
         public ValueTask WriteFrame(in MqttFrame frame, CancellationToken ct)
         {
             return _writer.WriteAsync(_mqttMessageWriter.FrameWriter, frame, ct);

@@ -31,9 +31,15 @@ namespace MQTTnet.AspNetCore.V3
 
         public MqttQualityOfServiceLevel QualityOfServiceLevel => Qos(_header);
 
-        private static MqttQualityOfServiceLevel Qos(byte header)
+        public static MqttQualityOfServiceLevel Qos(byte header)
         {
             return (MqttQualityOfServiceLevel)(header >> 1 & 0x3);
+        }
+
+        public static ushort ReadPacketIdentifier(in MqttFrame frame)
+        {
+            ReadOnlySpan<byte> span = new MqttV3PublishPacket(frame).PacketIdentifier.ToSpan();
+            return span.ReadTwoByteInteger();
         }
 
         public bool Dup => (_header & 0x8) > 0;

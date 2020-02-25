@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.Extensions.Options;
 using MQTTnet.Formatter;
 using MQTTnet.Packets;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,6 +31,39 @@ namespace MQTTnet.AspNetCore
             var result = await ReadFrame(cancellationToken).ConfigureAwait(false);
             Advance();
             return result;
+        }
+        
+        private int _nextPacketIdentifier;
+
+        private ConcurrentDictionary<ushort, TaskCompletionSource<MqttPubAckPacket>> _packets = new ConcurrentDictionary<ushort, TaskCompletionSource<MqttPubAckPacket>>();
+
+        public async Task<MqttPubAckPacket> PublishAtLeastOnce(byte[] topic, byte[] payload)
+        {
+            var ident = (ushort)Interlocked.Increment(ref _nextPacketIdentifier);
+            var publish = new MqttPublishPacket()
+            {
+                Topic = topic,
+                Payload = payload,
+                QualityOfServiceLevel = Protocol.MqttQualityOfServiceLevel.AtLeastOnce,
+                PacketIdentifier = ident
+            };
+
+            var waiter = new TaskCompletionSource<MqttPubAckPacket>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _packets.TryAdd(ident, waiter);
+
+            await WritePacket(publish);
+
+            return await waiter.Task;
+        }
+
+        public void Acknowledge(MqttFrame frame)
+        {
+            var ack = _mqttMessageReader.DecodePubAckPacket(frame.Body.ToSpan());
+            if (_packets.TryRemove(ack.PacketIdentifier.Value, out var waiter))
+            {
+                waiter.TrySetResult(ack);
+            }
         }
 
         public async ValueTask SubscribeAsync(MqttSubscribePacket subscribePacket, CancellationToken cancellationToken = default)
