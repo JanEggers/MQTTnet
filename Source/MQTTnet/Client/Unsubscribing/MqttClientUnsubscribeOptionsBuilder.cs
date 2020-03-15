@@ -1,6 +1,7 @@
 ﻿using MQTTnet.Packets;
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace MQTTnet.Client.Unsubscribing
 {
@@ -48,7 +49,7 @@ namespace MQTTnet.Client.Unsubscribing
         {
             if (topicFilter is null) throw new ArgumentNullException(nameof(topicFilter));
 
-            return WithTopicFilter(topicFilter.Topic);
+            return WithTopicFilter(Encoding.UTF8.GetString(topicFilter.Topic));
         }
 
         public MqttClientUnsubscribeOptions Build()
